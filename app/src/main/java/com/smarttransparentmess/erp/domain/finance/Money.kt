@@ -20,4 +20,8 @@ object Money {
     }
 
     fun format(minorUnits: Long): String = BigDecimal.valueOf(minorUnits, 2).toPlainString()
+
+    fun sum(values: Iterable<Long>): Long = values.fold(0L) { total, value ->
+        Math.addExact(total, value)
+    }
 }

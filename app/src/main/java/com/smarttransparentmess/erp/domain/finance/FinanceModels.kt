@@ -12,6 +12,8 @@ enum class BillingPeriodStatus {
 
 enum class PaymentMethod {
     CASH,
+    BKASH,
+    NAGAD,
     BANK,
     MOBILE_BANKING,
     OTHER;

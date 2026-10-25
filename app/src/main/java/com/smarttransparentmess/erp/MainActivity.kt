@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smarttransparentmess.erp.presentation.AdminFinanceViewModel
 import com.smarttransparentmess.erp.presentation.AuthViewModel
 import com.smarttransparentmess.erp.presentation.FinanceViewModel
 import com.smarttransparentmess.erp.ui.SmartMessApp
@@ -32,10 +33,16 @@ class MainActivity : ComponentActivity() {
                     repository = appContainer.financeRepository,
                 ),
             )
+            val adminFinanceViewModel: AdminFinanceViewModel = viewModel(
+                factory = AdminFinanceViewModel.Factory(
+                    repository = appContainer.adminFinanceRepository,
+                ),
+            )
             SmartMessTheme {
                 SmartMessApp(
                     viewModel = authViewModel,
                     financeViewModel = financeViewModel,
+                    adminFinanceViewModel = adminFinanceViewModel,
                     versionName = BuildConfig.VERSION_NAME,
                 )
             }

@@ -26,6 +26,7 @@ import com.smarttransparentmess.erp.domain.finance.PeriodFinance
 import com.smarttransparentmess.erp.presentation.FinanceUiState
 import com.smarttransparentmess.erp.ui.InfoCard
 import com.smarttransparentmess.erp.ui.StatusPill
+import com.smarttransparentmess.erp.ui.labelRes
 
 @Composable
 fun FinanceSection(
@@ -235,11 +236,4 @@ private fun PaymentCard(payment: PaymentReceipt) {
             }
         }
     }
-}
-
-private fun PaymentMethod.labelRes(): Int = when (this) {
-    PaymentMethod.CASH -> R.string.payment_method_cash
-    PaymentMethod.BANK -> R.string.payment_method_bank
-    PaymentMethod.MOBILE_BANKING -> R.string.payment_method_mobile_banking
-    PaymentMethod.OTHER -> R.string.payment_method_other
 }

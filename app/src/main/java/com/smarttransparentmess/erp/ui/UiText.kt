@@ -4,8 +4,13 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.smarttransparentmess.erp.R
+import com.smarttransparentmess.erp.domain.finance.AdjustmentKind
+import com.smarttransparentmess.erp.domain.finance.ChargeCategory
+import com.smarttransparentmess.erp.domain.finance.PaymentMethod
 import com.smarttransparentmess.erp.domain.model.AccountStatus
 import com.smarttransparentmess.erp.domain.model.AppRole
+import com.smarttransparentmess.erp.domain.validation.FinanceValidationError
+import com.smarttransparentmess.erp.presentation.AdminFinanceNotice
 import com.smarttransparentmess.erp.presentation.AuthNotice
 import com.smarttransparentmess.erp.presentation.ProfileUnavailableReason
 
@@ -21,6 +26,61 @@ fun AccountStatus.labelRes(): Int = when (this) {
     AccountStatus.ACTIVE -> R.string.active_status
     AccountStatus.PENDING -> R.string.pending_status
     AccountStatus.SUSPENDED -> R.string.suspended_status
+}
+
+@StringRes
+fun PaymentMethod.labelRes(): Int = when (this) {
+    PaymentMethod.CASH -> R.string.payment_method_cash
+    PaymentMethod.BKASH -> R.string.payment_method_bkash
+    PaymentMethod.NAGAD -> R.string.payment_method_nagad
+    PaymentMethod.BANK -> R.string.payment_method_bank
+    PaymentMethod.MOBILE_BANKING -> R.string.payment_method_mobile_banking
+    PaymentMethod.OTHER -> R.string.payment_method_other
+}
+
+@StringRes
+fun ChargeCategory.labelRes(): Int = when (this) {
+    ChargeCategory.SEAT_RENT -> R.string.charge_seat_rent
+    ChargeCategory.MEAL_CHARGE -> R.string.charge_meal
+    ChargeCategory.ELECTRICITY -> R.string.charge_electricity
+    ChargeCategory.WIFI -> R.string.charge_wifi
+    ChargeCategory.GAS -> R.string.charge_gas
+    ChargeCategory.WATER -> R.string.charge_water
+    ChargeCategory.FINE -> R.string.charge_fine
+    ChargeCategory.UTILITY -> R.string.charge_utility
+    ChargeCategory.SERVICE -> R.string.charge_service
+    ChargeCategory.OTHER -> R.string.charge_other
+}
+
+@StringRes
+fun AdjustmentKind.labelRes(): Int = when (this) {
+    AdjustmentKind.OPENING_DUE -> R.string.adjustment_opening_due
+    AdjustmentKind.CREDIT -> R.string.adjustment_credit
+    AdjustmentKind.DEBIT_ADJUSTMENT -> R.string.adjustment_debit
+}
+
+@StringRes
+fun FinanceValidationError.messageRes(): Int = when (this) {
+    FinanceValidationError.REQUIRED_SELECTION -> R.string.validation_required_selection
+    FinanceValidationError.AMOUNT -> R.string.validation_amount
+    FinanceValidationError.DATE -> R.string.validation_date
+    FinanceValidationError.DATE_RANGE -> R.string.validation_date_range
+    FinanceValidationError.DESCRIPTION -> R.string.validation_description
+    FinanceValidationError.REASON -> R.string.validation_reason
+    FinanceValidationError.REFERENCE -> R.string.validation_reference
+    FinanceValidationError.NOTE -> R.string.validation_note
+    FinanceValidationError.FUTURE_PAYMENT -> R.string.validation_future_payment
+}
+
+@StringRes
+fun AdminFinanceNotice.messageRes(): Int = when (this) {
+    AdminFinanceNotice.PERIOD_CREATED -> R.string.period_created
+    AdminFinanceNotice.PERIOD_CLOSED -> R.string.period_closed
+    AdminFinanceNotice.CHARGE_CREATED -> R.string.charge_created
+    AdminFinanceNotice.ADJUSTMENT_CREATED -> R.string.adjustment_created
+    AdminFinanceNotice.PAYMENT_RECORDED -> R.string.payment_recorded
+    AdminFinanceNotice.PAYMENT_REVERSED -> R.string.payment_reversed
+    AdminFinanceNotice.CARRY_FORWARD_COMPLETED -> R.string.carry_forward_completed
 }
 
 @Composable

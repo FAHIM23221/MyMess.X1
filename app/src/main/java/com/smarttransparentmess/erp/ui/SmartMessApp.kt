@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -29,11 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.smarttransparentmess.erp.R
+import com.smarttransparentmess.erp.domain.model.AppRole
 import com.smarttransparentmess.erp.domain.model.MemberProfile
+import com.smarttransparentmess.erp.presentation.AdminFinanceUiState
+import com.smarttransparentmess.erp.presentation.AdminFinanceViewModel
 import com.smarttransparentmess.erp.presentation.AppUiState
 import com.smarttransparentmess.erp.presentation.AuthViewModel
 import com.smarttransparentmess.erp.presentation.FinanceUiState
 import com.smarttransparentmess.erp.presentation.FinanceViewModel
+import com.smarttransparentmess.erp.ui.admin.AdminFinanceScreen
 import com.smarttransparentmess.erp.ui.auth.AccessUnavailableScreen
 import com.smarttransparentmess.erp.ui.auth.AdminReauthScreen
 import com.smarttransparentmess.erp.ui.auth.LoginScreen
@@ -48,10 +53,12 @@ import com.smarttransparentmess.erp.ui.profile.ProfileScreen
 fun SmartMessApp(
     viewModel: AuthViewModel,
     financeViewModel: FinanceViewModel,
+    adminFinanceViewModel: AdminFinanceViewModel,
     versionName: String,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val financeUiState by financeViewModel.uiState.collectAsState()
+    val adminFinanceUiState by adminFinanceViewModel.uiState.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val recoveryPending by viewModel.recoveryPending.collectAsState()
@@ -79,8 +86,18 @@ fun SmartMessApp(
 
     LaunchedEffect(uiState) {
         when (val state = uiState) {
-            is AppUiState.Authorized -> financeViewModel.loadForUser(state.profile.userId)
-            else -> financeViewModel.clear()
+            is AppUiState.Authorized -> {
+                financeViewModel.loadForUser(state.profile.userId)
+                if (state.profile.role == AppRole.ADMIN || state.profile.role == AppRole.MAIN_ADMIN) {
+                    adminFinanceViewModel.loadForUser(state.profile.userId)
+                } else {
+                    adminFinanceViewModel.clear()
+                }
+            }
+            else -> {
+                financeViewModel.clear()
+                adminFinanceViewModel.clear()
+            }
         }
     }
 
@@ -151,6 +168,8 @@ fun SmartMessApp(
                 AuthorizedShell(
                     profile = state.profile,
                     financeState = financeUiState,
+                    adminFinanceState = adminFinanceUiState,
+                    adminFinanceViewModel = adminFinanceViewModel,
                     selectedTab = selectedTab,
                     isBusy = isBusy,
                     notice = notice,
@@ -202,6 +221,8 @@ private fun ConfigurationScreen() {
 private fun AuthorizedShell(
     profile: MemberProfile,
     financeState: FinanceUiState,
+    adminFinanceState: AdminFinanceUiState,
+    adminFinanceViewModel: AdminFinanceViewModel,
     selectedTab: Int,
     isBusy: Boolean,
     notice: com.smarttransparentmess.erp.presentation.AuthNotice?,
@@ -212,6 +233,11 @@ private fun AuthorizedShell(
     onSignOut: () -> Unit,
     onClearNotice: () -> Unit,
 ) {
+    val canManageFinance = profile.role == AppRole.ADMIN || profile.role == AppRole.MAIN_ADMIN
+    val profileTab = if (canManageFinance) 2 else 1
+    LaunchedEffect(canManageFinance) {
+        if (!canManageFinance && selectedTab == 2) onTabSelected(0)
+    }
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -221,28 +247,45 @@ private fun AuthorizedShell(
                     icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.home)) },
                     label = { Text(stringResource(R.string.home)) },
                 )
+                if (canManageFinance) {
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { onTabSelected(1) },
+                        icon = {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = stringResource(R.string.admin_finance),
+                            )
+                        },
+                        label = { Text(stringResource(R.string.admin_finance)) },
+                    )
+                }
                 NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { onTabSelected(1) },
+                    selected = selectedTab == profileTab,
+                    onClick = { onTabSelected(profileTab) },
                     icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile)) },
                     label = { Text(stringResource(R.string.profile)) },
                 )
             }
         },
     ) { contentPadding: PaddingValues ->
-        if (selectedTab == 0) {
-            DashboardScreen(
+        when {
+            selectedTab == 0 -> DashboardScreen(
                 profile = profile,
                 financeState = financeState,
                 modifier = Modifier.padding(contentPadding),
                 notice = notice,
-                onOpenProfile = { onTabSelected(1) },
+                onOpenProfile = { onTabSelected(profileTab) },
                 onRetryFinance = onRetryFinance,
                 onSignOut = onSignOut,
                 onClearNotice = onClearNotice,
             )
-        } else {
-            ProfileScreen(
+            selectedTab == 1 && canManageFinance -> AdminFinanceScreen(
+                state = adminFinanceState,
+                viewModel = adminFinanceViewModel,
+                modifier = Modifier.padding(contentPadding),
+            )
+            else -> ProfileScreen(
                 profile = profile,
                 modifier = Modifier.padding(contentPadding),
                 isBusy = isBusy,

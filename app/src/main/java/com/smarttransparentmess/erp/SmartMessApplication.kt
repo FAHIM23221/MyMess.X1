@@ -3,6 +3,7 @@ package com.smarttransparentmess.erp
 import android.app.Application
 import com.smarttransparentmess.erp.core.config.SupabaseConfig
 import com.smarttransparentmess.erp.data.auth.SupabaseAuthRepository
+import com.smarttransparentmess.erp.data.finance.SupabaseAdminFinanceRepository
 import com.smarttransparentmess.erp.data.finance.SupabaseFinanceRepository
 import com.smarttransparentmess.erp.data.profile.SupabaseMemberProfileRepository
 import com.smarttransparentmess.erp.data.security.SupabaseClientProvider
@@ -35,6 +36,7 @@ class AppContainer(application: Application) {
     }
     val profileRepository = supabaseClient?.let(::SupabaseMemberProfileRepository)
     val financeRepository = supabaseClient?.let(::SupabaseFinanceRepository)
+    val adminFinanceRepository = supabaseClient?.let(::SupabaseAdminFinanceRepository)
 
     private val _passwordRecoveryPending = MutableStateFlow(false)
     val passwordRecoveryPending: StateFlow<Boolean> = _passwordRecoveryPending.asStateFlow()

@@ -29,10 +29,10 @@ begin
 
     period_one := public.create_billing_period('SMOKE 2000-01', date '2000-01-01', date '2000-01-31');
     perform public.create_charge(
-        admin_id, period_one, 'OTHER', 1000, 'Rollback-only smoke charge', null, gen_random_uuid()
+        admin_id, period_one, 'ELECTRICITY', 1000, 'Rollback-only smoke charge', null, gen_random_uuid()
     );
     smoke_payment_id := public.record_payment(
-        admin_id, period_one, 400, 'CASH', timestamptz '2000-01-15 10:00:00+00',
+        admin_id, period_one, 400, 'BKASH', timestamptz '2000-01-15 10:00:00+00',
         'Rollback-only smoke payment', null, payment_request_id
     );
 
@@ -45,7 +45,7 @@ begin
     rejected := false;
     begin
         perform public.record_payment(
-            admin_id, period_one, 400, 'CASH', timestamptz '2000-01-15 10:00:00+00',
+            admin_id, period_one, 400, 'BKASH', timestamptz '2000-01-15 10:00:00+00',
             'Duplicate must roll back', null, payment_request_id
         );
     exception when unique_violation then
@@ -121,7 +121,7 @@ begin
     end if;
 
     perform public.record_payment(
-        admin_id, period_two, 1500, 'BANK', timestamptz '2000-02-15 10:00:00+00',
+        admin_id, period_two, 1500, 'NAGAD', timestamptz '2000-02-15 10:00:00+00',
         'Rollback-only overpayment', 'SMOKE-REFERENCE', gen_random_uuid()
     );
     select outstanding_due_minor, advance_credit_minor into due_minor, advance_minor
@@ -138,6 +138,23 @@ begin
     from public.my_financial_summary where billing_period_id = period_three;
     if credit_minor <> 500 or advance_minor <> 500 then
         raise exception 'Advance-credit carry-forward failed';
+    end if;
+
+    rejected := false;
+    begin
+        perform public.record_payment(
+            admin_id, period_three, 100, 'CASH', now() + interval '1 day',
+            'Future payment must be rejected', null, gen_random_uuid()
+        );
+    exception when others then
+        if position('Future payment time is not allowed' in sqlerrm) > 0 then
+            rejected := true;
+        else
+            raise;
+        end if;
+    end;
+    if not rejected then
+        raise exception 'Future payment timestamp was accepted';
     end if;
 
     perform set_config(

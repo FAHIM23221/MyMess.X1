@@ -50,6 +50,8 @@ fun SmartMessTheme(content: @Composable () -> Unit) {
     val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
     MaterialTheme(
         colorScheme = colors,
+        shapes = SmartMessShapes,
+        typography = SmartMessTypography,
         content = content,
     )
 }
