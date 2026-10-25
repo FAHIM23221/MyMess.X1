@@ -1,0 +1,21 @@
+# Local Android/Gradle state
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+
+# Signing and secret material (never commit)
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+.env
+.env.*
+
+# Tool/editor files
+.DS_Store
+Thumbs.db
