@@ -1,0 +1,78 @@
+name: Extract uploaded project ZIP
+
+on:
+  push:
+    paths:
+      - '*.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract-project:
+    name: Extract project ZIP into the repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Safely extract the uploaded source ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t zip_files < <(find . -maxdepth 1 -type f -iname '*.zip' -print | sort)
+          if [[ "${#zip_files[@]}" -eq 0 ]]; then
+            echo "No ZIP file found in the repository root. It may already have been extracted."
+            exit 0
+          fi
+          if [[ "${#zip_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one ZIP in the repository root; found ${#zip_files[@]}."
+            exit 1
+          fi
+
+          zip_file="${zip_files[0]}"
+          extract_dir="${RUNNER_TEMP}/smart-mess-source"
+          mkdir -p "$extract_dir"
+
+          python3 - "$zip_file" "$extract_dir" <<'PY'
+          import sys
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          archive_path = Path(sys.argv[1])
+          destination = Path(sys.argv[2]).resolve()
+          with zipfile.ZipFile(archive_path) as archive:
+              for item in archive.infolist():
+                  member = PurePosixPath(item.filename)
+                  target = (destination / Path(*member.parts)).resolve()
+                  if member.is_absolute() or ".." in member.parts or not target.is_relative_to(destination):
+                      raise SystemExit(f"Unsafe path in ZIP: {item.filename}")
+              archive.extractall(destination)
+          PY
+
+          source_dir="$extract_dir/smart-transparent-mess-erp-phase1"
+          if [[ ! -d "$source_dir" ]]; then
+            echo "Expected top-level folder smart-transparent-mess-erp-phase1 was not found in the ZIP."
+            exit 1
+          fi
+
+          # Copy the ZIP's project contents (including hidden .github/) to repo root.
+          cp -a "$source_dir/." .
+          chmod +x gradlew
+          mkdir -p source-archives
+          archive_name="$(basename "$zip_file")"
+          if [[ -e "source-archives/$archive_name" ]]; then
+            archive_name="${archive_name%.zip}-${GITHUB_RUN_ID}.zip"
+          fi
+          mv -- "$zip_file" "source-archives/$archive_name"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No repository changes to commit."
+          else
+            git commit -m "Extract SMART TRANSPARENT MESS ERP project ZIP"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
