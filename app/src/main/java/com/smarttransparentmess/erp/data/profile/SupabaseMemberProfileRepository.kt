@@ -2,8 +2,8 @@ package com.smarttransparentmess.erp.data.profile
 
 import com.smarttransparentmess.erp.domain.model.MemberProfile
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.filter
 
 class SupabaseMemberProfileRepository(
     private val client: SupabaseClient,
