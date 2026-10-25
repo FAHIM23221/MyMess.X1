@@ -24,7 +24,7 @@ const safeDeliveryFailure = (invitationId: string, code: string) =>
     dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
   });
 
-Deno.serve(async (request) => {
+const handleRequest = async (request: Request): Promise<Response> => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: JSON_HEADERS });
   }
@@ -203,4 +203,18 @@ Deno.serve(async (request) => {
   }
 
   return response(200, { status: "INVITATION_SENT", invitation_id: invitationId });
+};
+
+Deno.serve(async (request) => {
+  try {
+    return await handleRequest(request);
+  } catch {
+    // A thrown runtime/provider error can happen before or after an Auth call.
+    // Do not label it as SMTP delivery failure or expose provider internals.
+    return response(500, {
+      status: "REQUEST_UNCONFIRMED",
+      code: "EDGE_OPERATION_UNCONFIRMED",
+      dependency: "MEMBER_INVITATION_FUNCTION",
+    });
+  }
 });

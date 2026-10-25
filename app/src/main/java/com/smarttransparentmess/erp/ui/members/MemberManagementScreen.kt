@@ -501,8 +501,10 @@ private fun AuditSection(snapshot: MemberManagementSnapshot) {
 
 @Composable
 private fun MemberManagementFeedback(state: MemberManagementUiState, onClear: () -> Unit) {
+    val noticeIsError = state.notice?.isError() == true
     val errorText = when {
         state.validationError != null -> stringResource(state.validationError.titleRes())
+        noticeIsError -> null
         state.operationFailed -> stringResource(R.string.members_operation_error)
         state.loadFailed -> stringResource(R.string.members_load_error)
         else -> null
@@ -513,11 +515,7 @@ private fun MemberManagementFeedback(state: MemberManagementUiState, onClear: ()
         }
     }
     state.notice?.let { notice ->
-        val isError = notice in setOf(
-            MemberManagementNotice.DELIVERY_FAILED,
-            MemberManagementNotice.DELIVERY_UNCONFIRMED,
-            MemberManagementNotice.REQUEST_REJECTED,
-        )
+        val isError = notice.isError()
         Column(modifier = Modifier.fillMaxWidth()) {
             TextButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -525,9 +523,16 @@ private fun MemberManagementFeedback(state: MemberManagementUiState, onClear: ()
                     color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 )
             }
-            state.deliveryDependency?.let {
+            state.operationCode?.let {
                 Text(
-                    stringResource(R.string.members_delivery_dependency, it),
+                    stringResource(R.string.members_operation_code, it),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            state.operationDependency?.let {
+                Text(
+                    stringResource(R.string.members_operation_dependency, it),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -585,12 +590,26 @@ private fun InvitationDeliveryStatus.titleRes(): Int = when (this) {
     InvitationDeliveryStatus.NOT_REQUIRED -> R.string.members_delivery_not_required
 }
 
+private fun MemberManagementNotice.isError(): Boolean = this in setOf(
+    MemberManagementNotice.DELIVERY_FAILED,
+    MemberManagementNotice.DELIVERY_UNCONFIRMED,
+    MemberManagementNotice.REQUEST_REJECTED,
+    MemberManagementNotice.AUTHENTICATION_REQUIRED,
+    MemberManagementNotice.SERVER_CONFIGURATION_MISSING,
+    MemberManagementNotice.REQUEST_FAILED,
+    MemberManagementNotice.REQUEST_UNCONFIRMED,
+)
+
 private fun MemberManagementNotice.titleRes(): Int = when (this) {
     MemberManagementNotice.MEMBER_ADDED -> R.string.members_notice_added
     MemberManagementNotice.INVITATION_SENT -> R.string.members_notice_invitation_sent
     MemberManagementNotice.DELIVERY_FAILED -> R.string.members_notice_delivery_failed
     MemberManagementNotice.DELIVERY_UNCONFIRMED -> R.string.members_notice_delivery_unconfirmed
     MemberManagementNotice.REQUEST_REJECTED -> R.string.members_notice_request_rejected
+    MemberManagementNotice.AUTHENTICATION_REQUIRED -> R.string.members_notice_authentication_required
+    MemberManagementNotice.SERVER_CONFIGURATION_MISSING -> R.string.members_notice_server_configuration_missing
+    MemberManagementNotice.REQUEST_FAILED -> R.string.members_notice_request_failed
+    MemberManagementNotice.REQUEST_UNCONFIRMED -> R.string.members_notice_request_unconfirmed
     MemberManagementNotice.INVITATION_CANCELLED -> R.string.members_notice_invitation_cancelled
     MemberManagementNotice.PROFILE_UPDATED -> R.string.members_notice_profile_updated
     MemberManagementNotice.LIFECYCLE_UPDATED -> R.string.members_notice_lifecycle_updated

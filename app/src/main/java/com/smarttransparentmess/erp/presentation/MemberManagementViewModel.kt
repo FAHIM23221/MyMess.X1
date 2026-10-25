@@ -24,6 +24,10 @@ enum class MemberManagementNotice {
     DELIVERY_FAILED,
     DELIVERY_UNCONFIRMED,
     REQUEST_REJECTED,
+    AUTHENTICATION_REQUIRED,
+    SERVER_CONFIGURATION_MISSING,
+    REQUEST_FAILED,
+    REQUEST_UNCONFIRMED,
     INVITATION_CANCELLED,
     PROFILE_UPDATED,
     LIFECYCLE_UPDATED,
@@ -39,7 +43,8 @@ data class MemberManagementUiState(
     val operationFailed: Boolean = false,
     val validationError: MemberManagementValidationError? = null,
     val notice: MemberManagementNotice? = null,
-    val deliveryDependency: String? = null,
+    val operationCode: String? = null,
+    val operationDependency: String? = null,
 )
 
 class MemberManagementViewModel(
@@ -124,26 +129,25 @@ class MemberManagementViewModel(
                         isSubmitting = false,
                         snapshot = refreshed ?: _uiState.value.snapshot,
                         loadFailed = refreshed == null,
-                        operationFailed = result.status == OnboardingStatus.REQUEST_REJECTED,
-                        notice = when (result.status) {
-                            OnboardingStatus.ACTIVE -> MemberManagementNotice.MEMBER_ADDED
-                            OnboardingStatus.INVITATION_SENT -> MemberManagementNotice.INVITATION_SENT
-                            OnboardingStatus.DELIVERY_FAILED -> MemberManagementNotice.DELIVERY_FAILED
-                            OnboardingStatus.DELIVERY_UNCONFIRMED -> MemberManagementNotice.DELIVERY_UNCONFIRMED
-                            OnboardingStatus.REQUEST_REJECTED -> MemberManagementNotice.REQUEST_REJECTED
-                        },
-                        deliveryDependency = result.dependency,
+                        operationFailed = false,
+                        notice = result.status.toNotice(),
+                        operationCode = result.code,
+                        operationDependency = result.dependency,
                     )
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
+                val refreshed = refreshAfterMutation()
                 if (activeUserId == userId) {
                     _uiState.value = _uiState.value.copy(
                         isSubmitting = false,
-                        operationFailed = true,
-                        notice = MemberManagementNotice.DELIVERY_UNCONFIRMED,
-                        deliveryDependency = "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+                        snapshot = refreshed ?: _uiState.value.snapshot,
+                        loadFailed = refreshed == null,
+                        operationFailed = false,
+                        notice = MemberManagementNotice.REQUEST_UNCONFIRMED,
+                        operationCode = "CLIENT_REQUEST_UNCONFIRMED",
+                        operationDependency = null,
                     )
                 }
             }
@@ -163,26 +167,25 @@ class MemberManagementViewModel(
                         isSubmitting = false,
                         snapshot = refreshed ?: _uiState.value.snapshot,
                         loadFailed = refreshed == null,
-                        operationFailed = result.status == OnboardingStatus.REQUEST_REJECTED,
-                        notice = when (result.status) {
-                            OnboardingStatus.ACTIVE -> MemberManagementNotice.MEMBER_ADDED
-                            OnboardingStatus.INVITATION_SENT -> MemberManagementNotice.INVITATION_SENT
-                            OnboardingStatus.DELIVERY_FAILED -> MemberManagementNotice.DELIVERY_FAILED
-                            OnboardingStatus.DELIVERY_UNCONFIRMED -> MemberManagementNotice.DELIVERY_UNCONFIRMED
-                            OnboardingStatus.REQUEST_REJECTED -> MemberManagementNotice.REQUEST_REJECTED
-                        },
-                        deliveryDependency = result.dependency,
+                        operationFailed = false,
+                        notice = result.status.toNotice(),
+                        operationCode = result.code,
+                        operationDependency = result.dependency,
                     )
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
+                val refreshed = refreshAfterMutation()
                 if (activeUserId == userId) {
                     _uiState.value = _uiState.value.copy(
                         isSubmitting = false,
-                        operationFailed = true,
-                        notice = MemberManagementNotice.DELIVERY_UNCONFIRMED,
-                        deliveryDependency = "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+                        snapshot = refreshed ?: _uiState.value.snapshot,
+                        loadFailed = refreshed == null,
+                        operationFailed = false,
+                        notice = MemberManagementNotice.REQUEST_UNCONFIRMED,
+                        operationCode = "CLIENT_REQUEST_UNCONFIRMED",
+                        operationDependency = null,
                     )
                 }
             }
@@ -238,7 +241,8 @@ class MemberManagementViewModel(
             operationFailed = false,
             validationError = null,
             notice = null,
-            deliveryDependency = null,
+            operationCode = null,
+            operationDependency = null,
         )
     }
 
@@ -259,7 +263,8 @@ class MemberManagementViewModel(
             operationFailed = false,
             validationError = null,
             notice = null,
-            deliveryDependency = null,
+            operationCode = null,
+            operationDependency = null,
         )
     }
 
@@ -304,6 +309,8 @@ class MemberManagementViewModel(
             validationError = error.error,
             operationFailed = false,
             notice = null,
+            operationCode = null,
+            operationDependency = null,
         )
         null
     }
@@ -320,4 +327,16 @@ class MemberManagementViewModel(
             return MemberManagementViewModel(repository) as T
         }
     }
+}
+
+private fun OnboardingStatus.toNotice(): MemberManagementNotice = when (this) {
+    OnboardingStatus.ACTIVE -> MemberManagementNotice.MEMBER_ADDED
+    OnboardingStatus.INVITATION_SENT -> MemberManagementNotice.INVITATION_SENT
+    OnboardingStatus.DELIVERY_FAILED -> MemberManagementNotice.DELIVERY_FAILED
+    OnboardingStatus.DELIVERY_UNCONFIRMED -> MemberManagementNotice.DELIVERY_UNCONFIRMED
+    OnboardingStatus.REQUEST_REJECTED -> MemberManagementNotice.REQUEST_REJECTED
+    OnboardingStatus.AUTHENTICATION_REQUIRED -> MemberManagementNotice.AUTHENTICATION_REQUIRED
+    OnboardingStatus.SERVER_CONFIGURATION_MISSING -> MemberManagementNotice.SERVER_CONFIGURATION_MISSING
+    OnboardingStatus.REQUEST_FAILED -> MemberManagementNotice.REQUEST_FAILED
+    OnboardingStatus.REQUEST_UNCONFIRMED -> MemberManagementNotice.REQUEST_UNCONFIRMED
 }

@@ -8,6 +8,7 @@ import com.smarttransparentmess.erp.domain.members.OnboardingStatus
 import com.smarttransparentmess.erp.domain.model.AppRole
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
@@ -15,12 +16,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import java.time.Instant
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 interface MemberManagementRepository {
@@ -37,8 +35,6 @@ interface MemberManagementRepository {
 class SupabaseMemberManagementRepository(
     private val client: SupabaseClient,
 ) : MemberManagementRepository {
-    private val json = Json { ignoreUnknownKeys = true }
-
     override suspend fun loadSnapshot(): MemberManagementSnapshot {
         requireSession()
         val members = client.postgrest.rpc("list_member_management_profiles")
@@ -65,7 +61,6 @@ class SupabaseMemberManagementRepository(
         entry: NewMemberInput,
         clientRequestId: String,
     ): OnboardingResult {
-        requireSession()
         return invokeOnboarding(
             buildJsonObject {
                 put("action", JsonPrimitive("create"))
@@ -81,7 +76,6 @@ class SupabaseMemberManagementRepository(
     }
 
     override suspend fun resendInvitation(invitationId: String): OnboardingResult {
-        requireSession()
         return invokeOnboarding(
             buildJsonObject {
                 put("action", JsonPrimitive("resend"))
@@ -149,30 +143,27 @@ class SupabaseMemberManagementRepository(
     }
 
     private suspend fun invokeOnboarding(body: JsonObject): OnboardingResult {
-        val response = client.functions.invoke(
-            function = "member-invitation",
-            body = body,
-            headers = Headers.build {
-                append(HttpHeaders.ContentType, "application/json")
-            },
-        )
-        val payload = json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val status = payload["status"]?.jsonPrimitive?.content
-            ?: error("Invitation function returned no status")
-        val mappedStatus = when (status) {
-            "ACTIVE" -> OnboardingStatus.ACTIVE
-            "INVITATION_SENT" -> OnboardingStatus.INVITATION_SENT
-            "DELIVERY_FAILED" -> OnboardingStatus.DELIVERY_FAILED
-            "DELIVERY_UNCONFIRMED" -> OnboardingStatus.DELIVERY_UNCONFIRMED
-            "REQUEST_REJECTED" -> OnboardingStatus.REQUEST_REJECTED
-            else -> error("Invitation function returned unsupported status: $status")
+        if (client.auth.currentUserOrNull() == null) {
+            return OnboardingResult(
+                status = OnboardingStatus.AUTHENTICATION_REQUIRED,
+                code = "AUTHENTICATED_SESSION_REQUIRED",
+                dependency = "SUPABASE_AUTH_SESSION",
+            )
         }
-        return OnboardingResult(
-            status = mappedStatus,
-            invitationId = payload["invitation_id"]?.jsonPrimitive?.content,
-            code = payload["code"]?.jsonPrimitive?.content,
-            dependency = payload["dependency"]?.jsonPrimitive?.content,
-        )
+        return try {
+            val response = client.functions.invoke(
+                function = "member-invitation",
+                body = body,
+                headers = Headers.build {
+                    append(HttpHeaders.ContentType, "application/json")
+                },
+            )
+            OnboardingResponseParser.parse(response.bodyAsText(), response.status.value)
+        } catch (error: RestException) {
+            // supabase-kt throws for non-2xx responses; its error property contains
+            // the function's safe JSON envelope, not a credential to display or log.
+            OnboardingResponseParser.parse(error.error, error.statusCode)
+        }
     }
 
     private fun requireSession() {
