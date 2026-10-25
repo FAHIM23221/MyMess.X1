@@ -31,7 +31,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.0-phase3` / versionCode `5`; use the latest green current-head artifact, not an older phase artifact.
+The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.1-phase3` / versionCode `6`; use the latest green current-head artifact, not an older phase artifact.
 
 ## Observed exact-head Android runs
 
@@ -42,6 +42,7 @@ The static script is not a SQL parser, penetration test or proof of RLS behavior
 | `04a9681` Phase C | `40189784504`, `40189787023` | Passed. |
 | `5abbb87` Phase D | `40190110513`, `40190114805` | Passed. |
 | `4f376d7` Phase E | `40190673127`, `40190677111` | Passed static checks, JVM tests, debug build and config verification. |
+| `12cbf4d` invitation hotfix | `40200572153`, `40200576638` | Passed static checks, JVM tests, debug build and config verification. |
 
 ## Supabase integration test matrix before real data
 
@@ -72,4 +73,4 @@ Use separate test Auth accounts and a disposable project. Test allowed and denie
 
 Also test password recovery redirect, PKCE callback, refresh after process restart, local/remote sign-out, invalid Auth logs, real invitation/resend/acceptance, and external delivery configuration. On Android verify valid/reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permissions, light/dark layouts, rotation/process restoration and that no arbitrary cache file is exposed through the receipt `FileProvider`.
 
-Real JWT/device, SMTP, FCM, backup/restore and production-release verification remain open. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
+The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Real JWT/device, live Edge deployment, SMTP, FCM, backup/restore and production-release verification remain open. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.

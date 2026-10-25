@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: **2026-10-25** (Asia/Dhaka). Branch `arena/34fa0299-mymess-x1`; PR `#2` remains open. Current source head is `4f376d7c15d0886098a9866b5d1d6c28e281e3a2`.
+Last updated: **2026-10-25** (Asia/Dhaka). Branch `arena/34fa0299-mymess-x1`; PR `#2` remains open. Current source head is `12cbf4d838babb6d63b9dc3d4b6a0fa7ff6962fa`.
 
 Status vocabulary: **COMPLETE** means the named slice has the evidence listed, not production readiness; **READY_FOR_TESTING** means source/backend checks exist but real JWT/device or external delivery is still required; **IN_PROGRESS** means adjacent requested behavior remains; **BLOCKED** identifies an external/configuration dependency; **DEFERRED** means no implementation is claimed.
 
@@ -9,7 +9,7 @@ Status vocabulary: **COMPLETE** means the named slice has the evidence listed, n
 - Active Supabase project: `mymess-x1-phase1` / `iwoiwgkaevobxqojyphb` (`ap-south-1`, PostgreSQL 17). Existing `mymess` / `jiiexmjczpzxikhmlgbh` was not modified.
 - Only the Android publishable key is used by the app. No service-role key, database password, signing key, or privileged credential is stored in the repository, APK configuration, logs, Variables, or audit records.
 - Backend changes are non-destructive and additive where possible. RLS remains enabled; no production data was erased and no security control was disabled to make a test pass.
-- App version remains `0.4.0-phase3`, versionCode `5`. Use only an artifact from a green run of the current head; the version string is not evidence that a later phase is device-verified.
+- App version is `0.4.1-phase3`, versionCode `6` for the invitation-error-reporting hotfix. Use only an artifact from a green run of the current head; the version string is not evidence that a later phase is device-verified.
 
 ## Phase register
 
@@ -29,10 +29,11 @@ Status vocabulary: **COMPLETE** means the named slice has the evidence listed, n
 
 - `ui/members/MemberManagementScreen.kt`, `MemberDetailSection.kt`, `presentation/MemberManagementViewModel.kt`, `data/members/MemberManagementRepository.kt`: searchable/sortable/filterable members, invitation/lifecycle/role/audit workspaces.
 - `0007_member_management.sql` and `0008_member_management_type_fix.sql`: `member_invitations`, departure metadata, capacity helper, provisioning/acceptance/resend/cancel/edit/lifecycle RPCs, audited role/status transitions, and member-management audit policy.
-- `supabase/functions/member-invitation/index.ts`: deployed invitation function with JWT verification; delivery state is explicit and no success is inferred without provider confirmation.
+- `supabase/functions/member-invitation/index.ts`: invitation function with JWT verification; delivery state is explicit and no success is inferred without provider confirmation. Source hotfix `12cbf4d` adds a safe thrown-error envelope; live deployment/read-back is still pending.
 - `phase_a_member_management_smoke.sql`: passed visibility, invitation idempotency, duplicate/capacity, cancellation, audit, direct-write denial, helper privilege and missing-profile checks with zero retained smoke rows.
 - `0022_member_join_date_business_timezone.sql` plus `phase_a_business_timezone_smoke.sql`: passed Asia/Dhaka join-date boundary regression in a UTC outer session.
-- **Open:** SMTP delivery, real invitation acceptance/resend, concurrent real-JWT capacity/transfer tests and installed-device checks.
+- `data/members/OnboardingResponseParser.kt` and `OnboardingResponseParserTest.kt`: non-2xx envelopes, authentication/configuration/request failures, safe code/dependency allowlisting and no raw provider body in UI state. Exact-head CI runs `40200572153` and `40200576638` passed.
+- **Open:** live Edge deployment/read-back, SMTP delivery, real invitation acceptance/resend, concurrent real-JWT capacity/transfer tests and installed-device checks.
 
 ### Phase B — finance extensions
 
@@ -78,6 +79,7 @@ Status vocabulary: **COMPLETE** means the named slice has the evidence listed, n
 | `04a9681` Phase C | `40189784504`, `40189787023` | Same workflow completed successfully. |
 | `5abbb87` Phase D | `40190110513`, `40190114805` | Same workflow completed successfully. |
 | `4f376d7` Phase E | `40190673127`, `40190677111` | Static checks, JVM tests, debug build, public-config verification and artifact upload passed. |
+| `12cbf4d` invitation hotfix | `40200572153`, `40200576638` | Static checks, JVM tests, debug build, public-config verification and artifact upload passed. |
 
 The sandbox lacks a reliable full local Android/Gradle runtime. Compilation is claimed only for the exact observed GitHub Actions heads above, never from a fictitious local build. No APK installation or production release is claimed.
 
@@ -86,7 +88,7 @@ The sandbox lacks a reliable full local Android/Gradle runtime. Compilation is c
 Applied only to `iwoiwgkaevobxqojyphb`:
 
 1. Phase 1–3 foundation/finance/operations migrations `0001`–`0006` and their earlier rollback/grant/RLS evidence.
-2. Phase A `0007`–`0008` and invitation Edge Function version 1.
+2. Phase A `0007`–`0008` and invitation Edge Function version 1. Source hotfix `12cbf4d` is not yet a live deployment claim.
 3. Phase B `0009`–`0011`.
 4. Phase C `0012`–`0014`.
 5. Phase D `0015`–`0016`.
@@ -108,7 +110,7 @@ Install only the latest green current-head artifact and verify Auth/deep links, 
 
 ### BLOCKED — outbound Auth/invitation email
 
-SMTP is unconfigured. `member-invitation` is deployed, but no real invitation, resend, recovery email or acceptance delivery is verified. The app must continue to expose the exact delivery status rather than report a fake success.
+SMTP is unconfigured. `member-invitation` version 1 is deployed, but no real invitation, resend, recovery email or acceptance delivery is verified. The screenshot incident had zero invitation rows on safe read-back; it is not evidence of Auth creation or delivery. The app must continue to expose the exact delivery status rather than report a fake success.
 
 ### BLOCKED — external push and automatic due publication
 
