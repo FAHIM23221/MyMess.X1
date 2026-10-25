@@ -33,6 +33,10 @@ data class ExtendedErpSnapshot(
     val dutyRequests: List<ErpRecord> = emptyList(),
     val managerRotations: List<ErpRecord> = emptyList(),
     val notices: List<ErpRecord> = emptyList(),
+    val messages: List<ErpRecord> = emptyList(),
+    val suggestions: List<ErpRecord> = emptyList(),
+    val complaints: List<ErpRecord> = emptyList(),
+    val messageReports: List<ErpRecord> = emptyList(),
     val loadedAt: String,
 )
 
@@ -61,6 +65,15 @@ enum class ErpAction(val wireValue: String) {
     SET_NOTICE_STATUS("set_notice_status"),
     PUBLISH_DUE_NOTICES("publish_due_notices"),
     MARK_NOTICE_READ("mark_notice_read"),
+    SEND_MESSAGE("send_message"),
+    MARK_MESSAGE_READ("mark_message_read"),
+    REPORT_MESSAGE("report_message"),
+    REVIEW_MESSAGE_REPORT("review_message_report"),
+    MODERATE_MESSAGE("moderate_message"),
+    CREATE_SUGGESTION("create_suggestion"),
+    REVIEW_SUGGESTION("review_suggestion"),
+    CREATE_COMPLAINT("create_complaint"),
+    RESPOND_COMPLAINT("respond_complaint"),
 }
 
 enum class ExtendedErpValidationError {
@@ -227,6 +240,44 @@ object ExtendedErpValidation {
             }
             ErpAction.PUBLISH_DUE_NOTICES -> Unit
             ErpAction.MARK_NOTICE_READ -> required("notice_id")
+            ErpAction.SEND_MESSAGE -> {
+                required("kind", "body")
+                if (values.getValue("kind") !in setOf("GROUP", "PRIVATE")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("kind") == "PRIVATE") required("recipient_id")
+                if (values.getValue("body").length !in 1..2000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
+            ErpAction.MARK_MESSAGE_READ -> required("message_id")
+            ErpAction.REPORT_MESSAGE -> {
+                required("message_id", "reason")
+                if (values.getValue("reason").length !in 8..500) throw ExtendedErpValidationException(ExtendedErpValidationError.REASON)
+            }
+            ErpAction.REVIEW_MESSAGE_REPORT -> {
+                required("report_id", "decision")
+                if (values.getValue("decision") !in setOf("REVIEWED", "DISMISSED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+            }
+            ErpAction.MODERATE_MESSAGE -> {
+                required("message_id", "status")
+                if (values.getValue("status") !in setOf("VISIBLE", "HIDDEN")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("status") == "HIDDEN" && values["reason"].orEmpty().length !in 8..500) throw ExtendedErpValidationException(ExtendedErpValidationError.REASON)
+            }
+            ErpAction.CREATE_SUGGESTION -> {
+                required("body")
+                if (values.getValue("body").length !in 8..2000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
+            ErpAction.REVIEW_SUGGESTION -> {
+                required("suggestion_id", "decision")
+                if (values.getValue("decision") !in setOf("PUBLISHED", "REJECTED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("decision") == "REJECTED" && values["reason"].orEmpty().length !in 8..500) throw ExtendedErpValidationException(ExtendedErpValidationError.REASON)
+            }
+            ErpAction.CREATE_COMPLAINT -> {
+                required("subject", "body")
+                if (values.getValue("subject").length !in 2..160 || values.getValue("body").length !in 8..3000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
+            ErpAction.RESPOND_COMPLAINT -> {
+                required("complaint_id", "status", "response")
+                if (values.getValue("status") !in setOf("IN_PROGRESS", "RESOLVED", "REJECTED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("response").length !in 2..2000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
         }
         return values
     }

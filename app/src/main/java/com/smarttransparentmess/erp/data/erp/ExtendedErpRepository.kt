@@ -215,6 +215,71 @@ class SupabaseExtendedErpRepository(
                 "mark_notice_read",
                 buildJsonObject { put("target_notice_id", JsonPrimitive(fields.getValue("notice_id"))) },
             )
+            ErpAction.SEND_MESSAGE -> client.postgrest.rpc(
+                "send_message",
+                buildJsonObject {
+                    put("target_kind", JsonPrimitive(fields.getValue("kind")))
+                    putNullable("target_recipient_id", fields["recipient_id"])
+                    put("target_body", JsonPrimitive(fields.getValue("body")))
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
+            ErpAction.MARK_MESSAGE_READ -> client.postgrest.rpc(
+                "mark_message_read",
+                buildJsonObject { put("target_message_id", JsonPrimitive(fields.getValue("message_id"))) },
+            )
+            ErpAction.REPORT_MESSAGE -> client.postgrest.rpc(
+                "report_message",
+                buildJsonObject {
+                    put("target_message_id", JsonPrimitive(fields.getValue("message_id")))
+                    put("target_reason", JsonPrimitive(fields.getValue("reason")))
+                },
+            )
+            ErpAction.REVIEW_MESSAGE_REPORT -> client.postgrest.rpc(
+                "review_message_report",
+                buildJsonObject {
+                    put("target_report_id", JsonPrimitive(fields.getValue("report_id")))
+                    put("target_decision", JsonPrimitive(fields.getValue("decision")))
+                },
+            )
+            ErpAction.MODERATE_MESSAGE -> client.postgrest.rpc(
+                "moderate_message",
+                buildJsonObject {
+                    put("target_message_id", JsonPrimitive(fields.getValue("message_id")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    putNullable("target_reason", fields["reason"])
+                },
+            )
+            ErpAction.CREATE_SUGGESTION -> client.postgrest.rpc(
+                "create_suggestion",
+                buildJsonObject {
+                    put("target_body", JsonPrimitive(fields.getValue("body")))
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
+            ErpAction.REVIEW_SUGGESTION -> client.postgrest.rpc(
+                "review_suggestion",
+                buildJsonObject {
+                    put("target_suggestion_id", JsonPrimitive(fields.getValue("suggestion_id")))
+                    put("target_decision", JsonPrimitive(fields.getValue("decision")))
+                    putNullable("target_reason", fields["reason"])
+                },
+            )
+            ErpAction.CREATE_COMPLAINT -> client.postgrest.rpc(
+                "create_complaint",
+                buildJsonObject {
+                    put("target_subject", JsonPrimitive(fields.getValue("subject")))
+                    put("target_body", JsonPrimitive(fields.getValue("body")))
+                },
+            )
+            ErpAction.RESPOND_COMPLAINT -> client.postgrest.rpc(
+                "respond_complaint",
+                buildJsonObject {
+                    put("target_complaint_id", JsonPrimitive(fields.getValue("complaint_id")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    put("target_response", JsonPrimitive(fields.getValue("response")))
+                },
+            )
         }
     }
 

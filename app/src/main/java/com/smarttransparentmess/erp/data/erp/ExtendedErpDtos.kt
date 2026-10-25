@@ -31,6 +31,10 @@ data class ExtendedErpSnapshotDto(
     @SerialName("duty_requests") val dutyRequests: List<JsonObject> = emptyList(),
     @SerialName("manager_rotations") val managerRotations: List<JsonObject> = emptyList(),
     val notices: List<JsonObject> = emptyList(),
+    val messages: List<JsonObject> = emptyList(),
+    val suggestions: List<JsonObject> = emptyList(),
+    val complaints: List<JsonObject> = emptyList(),
+    @SerialName("message_reports") val messageReports: List<JsonObject> = emptyList(),
 ) {
     fun toDomain(loadedAt: String): ExtendedErpSnapshot = ExtendedErpSnapshot(
         members = members.map(JsonObject::toRecord),
@@ -54,6 +58,10 @@ data class ExtendedErpSnapshotDto(
         dutyRequests = dutyRequests.map(JsonObject::toRecord),
         managerRotations = managerRotations.map(JsonObject::toRecord),
         notices = notices.map(JsonObject::toRecord),
+        messages = messages.map(JsonObject::toRecord),
+        suggestions = suggestions.map(JsonObject::toRecord),
+        complaints = complaints.map(JsonObject::toRecord),
+        messageReports = messageReports.map(JsonObject::toRecord),
         loadedAt = loadedAt,
     )
 }

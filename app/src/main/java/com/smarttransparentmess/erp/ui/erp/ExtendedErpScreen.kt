@@ -96,6 +96,7 @@ fun ExtendedErpScreen(
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.extended_billing_tab)) })
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.extended_operations_tab)) })
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text(stringResource(R.string.extended_duties_tab)) })
+                    Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text(stringResource(R.string.extended_community_tab)) })
                 }
                 when (selectedTab) {
                     0 -> BillingWorkspace(
@@ -119,7 +120,18 @@ fun ExtendedErpScreen(
                             activeAction = action
                         },
                     )
-                    else -> DutiesWorkspace(
+                    2 -> DutiesWorkspace(
+                        snapshot = snapshot,
+                        isAdmin = isAdmin,
+                        currentUserId = currentUserId,
+                        isSubmitting = state.isSubmitting,
+                        onAction = { action, values ->
+                            viewModel.clearFeedback()
+                            prefill = values
+                            activeAction = action
+                        },
+                    )
+                    else -> CommunityWorkspace(
                         snapshot = snapshot,
                         isAdmin = isAdmin,
                         currentUserId = currentUserId,
@@ -318,6 +330,76 @@ private fun DutiesWorkspace(
                     else onAction(ErpAction.MARK_NOTICE_READ, mapOf("notice_id" to record.id))
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun CommunityWorkspace(
+    snapshot: ExtendedErpSnapshot,
+    isAdmin: Boolean,
+    currentUserId: String,
+    isSubmitting: Boolean,
+    onAction: (ErpAction, Map<String, String>) -> Unit,
+) {
+    val isMainAdmin = snapshot.members.firstOrNull { it.id == currentUserId }?.text("role") == "MAIN_ADMIN"
+    FormCard(title = stringResource(R.string.extended_messages), subtitle = stringResource(R.string.extended_messages_body)) {
+        PrimaryActionButton(stringResource(R.string.extended_new_message), { onAction(ErpAction.SEND_MESSAGE, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.messages.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.messages.forEach { record ->
+            ErpRecordCard(record, listOf("sender_name", "recipient_name", "kind", "body", "status", "created_at", "current_user_read"))
+            if (!record.boolean("current_user_read") && record.text("sender_id") != currentUserId) {
+                OutlinedButton(onClick = { onAction(ErpAction.MARK_MESSAGE_READ, mapOf("message_id" to record.id)) }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.extended_mark_read))
+                }
+            }
+            OutlinedButton(onClick = { onAction(ErpAction.REPORT_MESSAGE, mapOf("message_id" to record.id)) }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.extended_report_message))
+            }
+            if (isMainAdmin) {
+                OutlinedButton(onClick = {
+                    onAction(ErpAction.MODERATE_MESSAGE, mapOf("message_id" to record.id, "status" to if (record.status == "HIDDEN") "VISIBLE" else "HIDDEN"))
+                }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(if (record.status == "HIDDEN") R.string.extended_restore_message else R.string.extended_hide_message))
+                }
+            }
+        }
+    }
+    FormCard(title = stringResource(R.string.extended_suggestions), subtitle = stringResource(R.string.extended_suggestions_body)) {
+        PrimaryActionButton(stringResource(R.string.extended_new_suggestion), { onAction(ErpAction.CREATE_SUGGESTION, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.suggestions.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.suggestions.forEach { record ->
+            ErpRecordCard(record, listOf("body", "status", "moderation_reason", "author_name", "created_at"))
+            if (isMainAdmin && record.status == "PENDING") {
+                OutlinedButton(onClick = { onAction(ErpAction.REVIEW_SUGGESTION, mapOf("suggestion_id" to record.id)) }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.extended_review_suggestion))
+                }
+            }
+        }
+    }
+    FormCard(title = stringResource(R.string.extended_complaints), subtitle = stringResource(R.string.extended_complaints_body)) {
+        PrimaryActionButton(stringResource(R.string.extended_new_complaint), { onAction(ErpAction.CREATE_COMPLAINT, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.complaints.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.complaints.forEach { record ->
+            ErpRecordCard(record, listOf("subject", "author_name", "status", "body", "response", "created_at"))
+            if (isAdmin && record.status !in setOf("RESOLVED", "REJECTED")) {
+                OutlinedButton(onClick = { onAction(ErpAction.RESPOND_COMPLAINT, mapOf("complaint_id" to record.id)) }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.extended_respond_complaint))
+                }
+            }
+        }
+    }
+    if (isAdmin) {
+        FormCard(title = stringResource(R.string.extended_message_reports)) {
+            if (snapshot.messageReports.isEmpty()) Text(stringResource(R.string.extended_no_records))
+            snapshot.messageReports.forEach { record ->
+                ErpRecordCard(record, listOf("reporter_name", "reason", "status", "message_id", "created_at"))
+                if (record.status == "OPEN") {
+                    OutlinedButton(onClick = { onAction(ErpAction.REVIEW_MESSAGE_REPORT, mapOf("report_id" to record.id)) }, enabled = !isSubmitting, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.extended_review_report))
+                    }
+                }
+            }
         }
     }
 }
@@ -535,6 +617,13 @@ private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin
     val rotationOptions = snapshot.managerRotations.filter { it.status == "SCHEDULED" }
         .map { ErpOption(it.id, "${it.text("manager_name")} · ${it.text("starts_on")}") }
     val noticeOptions = snapshot.notices.map { ErpOption(it.id, "${it.text("title")} · ${it.status}") }
+    val messageOptions = snapshot.messages.map { ErpOption(it.id, "${it.text("kind")} · ${it.text("sender_name")} · ${it.text("created_at").substringBefore('.')}") }
+    val messageRecipientOptions = allMemberOptions.filter { option ->
+        option.id != currentUserId && (isAdmin || snapshot.members.firstOrNull { it.id == option.id }?.text("role") in setOf("ADMIN", "MAIN_ADMIN"))
+    }
+    val suggestionOptions = snapshot.suggestions.filter { it.status == "PENDING" }.map { ErpOption(it.id, it.text("body").take(80)) }
+    val complaintOptions = snapshot.complaints.map { ErpOption(it.id, "${it.text("subject")} · ${it.status}") }
+    val reportOptions = snapshot.messageReports.filter { it.status == "OPEN" }.map { ErpOption(it.id, "${it.text("reporter_name")} · ${it.text("reason").take(60)}") }
     return when (action) {
         ErpAction.CREATE_FINE -> ErpActionSpec(
             stringResource(R.string.extended_add_fine),
@@ -723,6 +812,67 @@ private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin
         ErpAction.MARK_NOTICE_READ -> ErpActionSpec(
             stringResource(R.string.extended_mark_read),
             listOf(ErpField("notice_id", stringResource(R.string.extended_notice), noticeOptions)),
+        )
+        ErpAction.SEND_MESSAGE -> ErpActionSpec(
+            stringResource(R.string.extended_new_message),
+            listOf(
+                ErpField("kind", stringResource(R.string.extended_message_kind), listOf(ErpOption("GROUP", stringResource(R.string.extended_group_message)), ErpOption("PRIVATE", stringResource(R.string.extended_private_message)))),
+                ErpField("recipient_id", stringResource(R.string.extended_recipient), messageRecipientOptions),
+                ErpField("body", stringResource(R.string.extended_message_body), singleLine = false),
+            ),
+        )
+        ErpAction.MARK_MESSAGE_READ -> ErpActionSpec(
+            stringResource(R.string.extended_mark_read),
+            listOf(ErpField("message_id", stringResource(R.string.extended_message), messageOptions)),
+        )
+        ErpAction.REPORT_MESSAGE -> ErpActionSpec(
+            stringResource(R.string.extended_report_message),
+            listOf(
+                ErpField("message_id", stringResource(R.string.extended_message), messageOptions),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+            ),
+        )
+        ErpAction.REVIEW_MESSAGE_REPORT -> ErpActionSpec(
+            stringResource(R.string.extended_review_report),
+            listOf(
+                ErpField("report_id", stringResource(R.string.extended_message_report), reportOptions),
+                ErpField("decision", stringResource(R.string.extended_review_status), listOf(ErpOption("REVIEWED", stringResource(R.string.extended_verified)), ErpOption("DISMISSED", stringResource(R.string.extended_dismissed)))),
+            ),
+        )
+        ErpAction.MODERATE_MESSAGE -> ErpActionSpec(
+            stringResource(R.string.extended_moderate_message),
+            listOf(
+                ErpField("message_id", stringResource(R.string.extended_message), messageOptions),
+                ErpField("status", stringResource(R.string.status_label), listOf(ErpOption("VISIBLE", stringResource(R.string.extended_visible)), ErpOption("HIDDEN", stringResource(R.string.extended_hidden)))),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+            ),
+        )
+        ErpAction.CREATE_SUGGESTION -> ErpActionSpec(
+            stringResource(R.string.extended_new_suggestion),
+            listOf(ErpField("body", stringResource(R.string.extended_suggestion_body), singleLine = false)),
+        )
+        ErpAction.REVIEW_SUGGESTION -> ErpActionSpec(
+            stringResource(R.string.extended_review_suggestion),
+            listOf(
+                ErpField("suggestion_id", stringResource(R.string.extended_suggestion), suggestionOptions),
+                ErpField("decision", stringResource(R.string.extended_review_status), listOf(ErpOption("PUBLISHED", stringResource(R.string.extended_published)), ErpOption("REJECTED", stringResource(R.string.extended_rejected)))),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+            ),
+        )
+        ErpAction.CREATE_COMPLAINT -> ErpActionSpec(
+            stringResource(R.string.extended_new_complaint),
+            listOf(
+                ErpField("subject", stringResource(R.string.extended_complaint_subject)),
+                ErpField("body", stringResource(R.string.extended_complaint_body), singleLine = false),
+            ),
+        )
+        ErpAction.RESPOND_COMPLAINT -> ErpActionSpec(
+            stringResource(R.string.extended_respond_complaint),
+            listOf(
+                ErpField("complaint_id", stringResource(R.string.extended_complaint), complaintOptions),
+                ErpField("status", stringResource(R.string.status_label), listOf(ErpOption("IN_PROGRESS", "IN_PROGRESS"), ErpOption("RESOLVED", "RESOLVED"), ErpOption("REJECTED", stringResource(R.string.extended_rejected)))),
+                ErpField("response", stringResource(R.string.extended_response), singleLine = false),
+            ),
         )
     }
 }
