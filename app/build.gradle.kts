@@ -59,8 +59,8 @@ android {
         applicationId = "com.smarttransparentmess.erp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.1-phase2"
+        versionCode = 4
+        versionName = "0.3.0-phase2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Public configuration resolves from nonblank overrides, then the bundled public file.
