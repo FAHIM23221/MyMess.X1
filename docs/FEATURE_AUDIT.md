@@ -1,132 +1,105 @@
 # Evidence-based feature audit
 
-Last audited: **2026-10-25** (Asia/Dhaka), branch `arena/34fa0299-mymess-x1`, starting head `79b53ebbc8084fa294fa938cd6461871d3c705cd`. PR `#2` was the only open PR at audit start and its checks were green.
+Last audited: **2026-10-25** (Asia/Dhaka), branch `arena/34fa0299-mymess-x1`, current source head `4f376d7c15d0886098a9866b5d1d6c28e281e3a2`. PR `#2` remains open. The active backend is only `iwoiwgkaevobxqojyphb`; the pre-existing `mymess` / `jiiexmjczpzxikhmlgbh` project is outside the boundary.
 
-This audit distinguishes source presence from executed verification. **Implemented and verified** means the stated evidence was actually observed; it does not imply production readiness. **Requires real-device or security verification** means source/backend evidence exists but the named authorization or device matrix has not run.
+This register deliberately separates a screen or table existing from an operation being verified. **Implemented and verified** is limited to the evidence named in the row. **Requires real-device/security verification** means source and/or rollback backend evidence exists, but the relevant real JWT, installed-device, delivery, or concurrency check has not run. No row is a production-readiness claim.
 
-## Verification legend
+## Evidence legend
 
-- **CI/JVM:** GitHub Actions static checks, unit tests, and `assembleDebug` observed through run `40162396363` / PR run `40162400125`.
-- **DB smoke:** owner-session SQL with injected claims and `ROLLBACK`; useful RPC/constraint evidence, not a real-JWT test.
-- **Live read-back:** schema, grants, policies, triggers, Auth configuration, or counts read from `iwoiwgkaevobxqojyphb`.
-- **Real JWT/device:** not yet executed for the current source. No feature is promoted to production-ready on the basis of a screen, button, model, table, or compiled APK.
+- **CI/JVM:** observed GitHub Actions static checks, unit tests, `assembleDebug`, generated public `BuildConfig` checks, and artifact upload. Phase E exact-head runs `40190673127` and `40190677111` passed.
+- **DB smoke:** owner-session SQL with injected claims and `ROLLBACK`; proves the named RPC/constraint path in that session, not real PostgREST JWT behavior.
+- **Live read-back:** schema, grants, policies, function configuration, Auth configuration, or counts read from `iwoiwgkaevobxqojyphb`.
+- **Real JWT/device:** not yet executed for the current source. SMTP and FCM delivery are not inferred from durable database rows.
 
-## Phase A — Admin user management
-
-| Requested feature | Classification | Exact evidence and remaining gap |
-| --- | --- | --- |
-| `Members & User Management` workspace | **Not implemented** | `SmartMessApp.kt` has Home/Finance/Operations/Profile only. No member-management ViewModel, repository, or screen exists. |
-| Members list, search, sorting, filters | **Not implemented** | `profiles` and `profiles_select_own_or_admin` in `0001_phase1_foundation.sql` provide an authorized data source, not the requested UI. |
-| Add New Member form | **Backend exists but UI is missing** | `provision_member_profile(uuid,text,text,text,text,text,text,date)` exists in `0001`; it requires a pre-existing confirmed Auth user and has no Android caller or capacity guard. |
-| Secure invitation delivery | **Blocked by configuration or external service** | Auth signup is disabled and `smtp_host`, `smtp_admin_email`, and sender settings read back as null. `list_edge_functions` returned no functions. No invitation table/delivery integration exists. No invitation may be reported as sent. |
-| Pending invitation state | **Not implemented** | `PENDING` exists as a profile status, but there is no invitation entity, acceptance flow, delivery status, resend history, or duplicate-open-invite guard. |
-| Active/suspended states | **Partially implemented** | `account_status` and audited `set_profile_status` exist in `0001`; UI and real-JWT/device checks are absent. |
-| Departed/archive state with financial retention | **Not implemented** | Profiles have no departed metadata or lifecycle RPC. Financial foreign keys use `ON DELETE RESTRICT`, but that alone is not a departure workflow. |
-| Member details and authorized Admin edit | **Partially implemented** | Own name/phone edit exists in `SupabaseMemberProfileRepository.kt` and `ProfileScreen.kt`. No Admin details/edit UI or protected Admin edit RPC exists. |
-| Suspend/reactivate/departure actions | **Backend exists but UI is missing** | Main Admin-only `set_profile_status` supports the existing enum; there is no departure action, Admin member action UI, or capacity-aware reactivation. |
-| Member financial summary, payments, receipts | **Partially implemented** | `AdminFinanceRepository.kt`, `AdminFinanceCalculator.kt`, `AdminPaymentSection.kt`, and `ReceiptDocument.kt` provide Admin finance data/PDF source. They are not connected to a member-details workspace and still require device verification. |
-| Member meal history | **Partially implemented** | `meal_entries`, `meal_reversals`, `OperationsRepository.kt`, and `OperationsMealSection.kt` exist; no member-management detail view connects them. |
-| Admin/Manager list and role management | **Backend exists but UI is missing** | `set_profile_role` and `transfer_main_admin` exist in `0001`; no role-management screen and no five-Admin capacity check exists. |
-| Main Admin-only privileged actions | **Requires real-device or security verification** | Singleton assignment, role derivation, transfer/recovery functions, and Main Admin RLS exist in `0001`/`002_recover_main_admin.sql`. One assignment was read back. Real-JWT transfer/recovery tests remain. |
-| Maximum 20 members / 5 Admins | **Not implemented** | Reviewed `0001`–`0006` contain no member/Admin capacity constraint or RPC guard. Existing provisioning/role/transfer paths therefore need hardening, not only a UI counter. |
-| Exactly one active Main Admin | **Requires real-device or security verification** | Singleton PK/unique mess row, deferred mess constraint, active-profile trigger, and transfer logic exist in `0001`. One assignment is present; concurrent/real-JWT verification remains. |
-| Duplicate account / concurrent over-capacity prevention | **Not implemented** | `profiles.user_id` and `(mess_id,member_id)` are unique, but there is no normalized-email invitation guard or capacity transaction lock. |
-| User-management audit history UI | **Backend exists but UI is missing** | `audit_logs` and audited Phase 1 RPCs exist. `audit_logs_select_main_admin_only` is the only audit SELECT policy; no member-management audit screen or narrow Admin event policy exists. |
-
-## Phase B — Finance and billing
+## Phase A — Members and user management
 
 | Requested feature | Classification | Exact evidence and remaining gap |
 | --- | --- | --- |
-| Exact BDT minor-unit arithmetic | **Implemented and verified** | `Money.kt`, `FinanceModels.kt`, `AdminFinanceCalculator.kt`; `MoneyTest.kt`, `FinanceModelsTest.kt`, and `AdminFinanceCalculatorTest.kt` passed CI. |
-| Seat rent/Wi-Fi/electricity/water/gas/other charges | **Requires real-device or security verification** | `ChargeCategory`, `create_charge`, `AdminChargeSection.kt`, migrations `0002`/`0004`, and Phase 2 DB smoke exist. Device and real-JWT mutation tests remain. |
-| Fines/reasoned penalties | **Partially implemented** | `FINE` is a charge category and descriptions/reasons are validated. No dedicated fines ledger, penalty workflow, notification, or fine report exists. |
-| Periods, allocation, opening balance, carry-forward, advances | **Requires real-device or security verification** | `billing_periods`, `charges`, `billing_adjustments`, `carry_forward_balance`, Admin periods/charges UI, and rollback smoke exist. |
-| Partial/overpayment and transaction references | **Requires real-device or security verification** | `payments`, exact due/advance calculations, `record_payment`, payment UI, and smoke/JVM tests exist. |
-| Payment verification | **Not implemented** | Valid means not reversed; there is no separate unverified/verified/rejected payment state or verifier workflow. |
-| Receipts, PDF download/share, void/reversal | **Requires real-device or security verification** | `receipts`, `payment_reversals`, `ReceiptDocument.kt`, FileProvider, Admin payment UI, and DB smoke exist. Rendering/Bengali/share targets need a device. |
-| Monthly bill generation and due dates | **Partially implemented** | Periods, charges, and optional charge due dates exist. No one-click monthly bill run, generated statement, or consolidated monthly invoice exists. |
-| Overdue status and reminders | **Not implemented** | No overdue calculator, reminder entity, scheduler, or notification delivery exists. |
-| Automatic meal-to-charge policy | **Not implemented** | `OperationsMealSection.kt` explicitly says entries do not create charges. No pricing/policy table or billing RPC exists. |
-| Safe close, duplicate protection, audit trail | **Requires real-device or security verification** | Closed-period RPC checks, request IDs, reversal/carry-forward uniqueness, and audit writes are present in `0002`/`0004` and smoke scripts. |
-| Member-wise ledger/statements | **Partially implemented** | Member summaries and Admin member-wise balances exist; no member-details ledger or general statement export exists. |
+| Members workspace and navigation | **Implemented and verified (CI/JVM)** | `ui/members/MemberManagementScreen.kt`, `MemberDetailSection.kt`, `presentation/MemberManagementViewModel.kt`, and `data/members/MemberManagementRepository.kt` are wired in `ui/SmartMessApp.kt`. Commit `1f6876b`; runs `40188681745` and `40188685214` passed. |
+| Search, sorting, role/status filters | **Implemented and verified (CI/JVM)** | `domain/members/MemberManagementModels.kt` and `MemberManagementModelsTest.kt` cover combined search/filter/sort and departed status derivation. Installed usability remains open. |
+| Validated Add New Member and provisioning | **Requires real-device/security verification** | `request_member_onboarding`, `provision_member_profile`, `accept_pending_member_invitation`, and `update_managed_member_profile` in `0007_member_management.sql` / `0008_member_management_type_fix.sql`; Android form/repository are wired. `phase_a_member_management_smoke.sql` passed, including duplicate and capacity cases. No real invitation acceptance from the app has run. |
+| Secure invitation/resend/delivery status | **Partial; configuration-blocked for delivery** | `member_invitations` stores `PENDING`/`SENT`/`FAILED`/`UNCONFIRMED`/`NOT_REQUIRED`, attempts and errors; `supabase/functions/member-invitation/index.ts` is deployed with JWT verification. `finalize_member_invitation_delivery` is service-role-only and no privileged key is in Android. SMTP is unconfigured, so no email delivery, real-JWT invite, resend, or acceptance is claimed. |
+| Pending/active/suspended/departed lifecycle | **Requires real-device/security verification** | `profiles.account_status`, `departed_at`, `departure_reason`, `set_managed_member_lifecycle`, and `set_profile_status` retain history and use audited transitions. Rollback smoke passed cancellation, suspension/reactivation/departure and direct-write denial; real role/lifecycle JWT tests remain. |
+| Details, authorized edit, financial/payment/meal/receipt history | **Requires real-device/security verification** | `MemberDetailSection.kt` consumes `AdminFinanceUiState` and `OperationsUiState`; finance/receipt sources are `AdminFinanceRepository.kt`, `AdminPaymentSection.kt`, `ReceiptDocument.kt`, and `OperationsRepository.kt`. Backend member scoping exists, but the combined details flow and PDF rendering need a device and real JWT. |
+| Admin/Manager and Main Admin role management | **Requires real-device/security verification** | `set_profile_role`, `transfer_main_admin`, `recover_main_admin_owner_only`, and Main Admin assignment policies are in `0001`/`0007`; role UI is in `MemberManagementScreen.kt`. Client role self-elevation is not a write path. Real transfer/recovery and suspended-role tests remain. |
+| Maximum 20 members / 5 Admins / duplicate and concurrent safety | **Implemented and verified at DB-smoke level; concurrency still requires security verification** | `assert_member_management_capacity` uses a per-mess advisory transaction lock; unique open-email/member-ID indexes and capacity checks are in `0007`. Smoke covered duplicate prevention and capacity rejection. True concurrent PostgREST requests have not been run. |
+| Exactly one active Main Admin and accounting retention | **Requires real-device/security verification** | Singleton assignment constraints/triggers and `ON DELETE RESTRICT` ledger references are in `0001`/`0007`; one assignment was read back. No destructive departure/delete path is exposed. Concurrent transfer/recovery and real-JWT checks remain. |
+| Management audit actor/time/target/details | **Implemented and verified at source/DB-smoke level** | `audit_logs`, audited management RPCs, `audit_logs_select_member_management_admin`, and the Audit tab in `MemberManagementScreen.kt`; smoke checked audit writes and privilege boundaries. Cross-mess real-JWT reads remain unverified. |
+| Join-date business calendar | **Implemented and verified (targeted DB smoke)** | `0022_member_join_date_business_timezone.sql` pins both management RPCs to `TimeZone=Asia/Dhaka`; `phase_a_business_timezone_smoke.sql` passed the upper-bound and out-of-range checks in a UTC outer session. |
 
-## Phase C — Meals, rice, expenses, cash book
-
-| Requested feature | Classification | Exact evidence and remaining gap |
-| --- | --- | --- |
-| Daily slots/member entries/half meals | **Requires real-device or security verification** | `meal_entries`, `record_meal_entry`, `OperationsMealSection.kt`, and Phase 3 smoke/JVM tests exist. |
-| Meal ON/OFF and pause/resume dates | **Not implemented** | No meal-status schedule, pause range, or notification RPC/table exists. |
-| Meal correction history | **Requires real-device or security verification** | `meal_reversals` and one-time reversal RPC/UI exist; real authorization/device tests remain. |
-| Monthly meal totals/cost summary | **Partially implemented** | Active meal-unit total exists in `OperationsCalculator.kt`; no monthly grouping or cost total exists. |
-| Meal notifications | **Not implemented** | No meal event recipient, notification table, or push integration exists. |
-| Rice stock and negative-stock guard | **Requires real-device or security verification** | `rice_movements`, advisory-lock stock guard, UI, and rollback smoke exist. |
-| Low-stock alerts | **Not implemented** | No threshold setting, alert state, or notification exists. |
-| Rice purchase unit/price/vendor/receipt | **Not implemented** | Current rows contain only kind, grams, note, request ID, actor, timestamp. |
-| Linked rice correction | **Not implemented** | Only an offsetting movement is possible; no linked reversal entity exists. |
-| Expense categories/notes/reversals | **Requires real-device or security verification** | `expenses`, `expense_reversals`, protected RPCs, UI, and smoke tests exist. |
-| Expense vendor/attachments/approval | **Not implemented** | No vendor, Storage attachment, approval status, or approver fields/workflow exists. |
-| Monthly rice/expense summaries | **Not implemented** | Current summary is all loaded rows, not a monthly consumption/expense report. |
-| Source-generated cash book | **Requires real-device or security verification** | `cash_book_entries`, four triggers, source uniqueness/backfill, read-only UI, and smoke evidence exist in `0006`. |
-| Cash/bank/mobile-wallet balances | **Not implemented** | No account entity or per-account balance exists; current total is a single mess cash aggregate. |
-| Opening/closing balance and reconciliation | **Not implemented** | No opening balance RPC, daily/monthly close, reconciliation, or lock entity exists. |
-| Member contribution/expense breakdown | **Partially implemented** | Payment and expense history are visible; no grouped contribution/expense report exists. |
-| Cash period locking | **Not implemented** | Finance billing-period rules do not lock every cash-book source operation. |
-
-## Phase D — Duties, manager rotation, notices, notifications
+## Phase B — Finance, fines, and billing
 
 | Requested feature | Classification | Exact evidence and remaining gap |
 | --- | --- | --- |
-| Duty calendar, assignments, deadlines/status | **Not implemented** | No duty table, RPC, repository, or screen exists. |
-| Cannot-do requests, swaps, approval | **Not implemented** | No request/swap/approval workflow exists. |
-| Completion and missed-duty handling | **Not implemented** | No completion/missed-duty tracking exists. |
-| Manager rotation, next manager, handover | **Not implemented** | `is_current_manager` exists on profiles, but no rotation schedule/handover implementation exists. |
-| Notice CRUD/publish/schedule/cancel/archive | **Not implemented** | No notice table, RPC, repository, or Admin screen exists. |
-| Audience/expiration/read counts/reminders | **Not implemented** | No recipients, read receipts, audience policy, or scheduler exists. |
-| Android push/token registration/deep links | **Blocked by configuration or external service** | No FCM configuration, device-token table, notification service, or secure delivery function exists. A Postgres notice alone would not prove push delivery. |
+| Exact BDT arithmetic, charges, adjustments, periods, carry-forward | **Implemented and verified (CI/JVM + DB smoke)** | `Money.kt`, `FinanceModels.kt`, `AdminFinanceCalculator.kt`, `AdminChargeSection.kt`, migrations `0002`–`0005`, and `phase2_smoke_transaction.sql`; prior green CI and rollback checks cover minor-unit arithmetic, closing, reversal and carry-forward rules. |
+| Dedicated fines with reason and due date | **Requires real-device/security verification** | `fines`, `create_fine`, `fines_select`, `ExtendedErpScreen.kt`, `ExtendedErpRepository.kt`, and `0010_phase_b_finance_request_id_fix.sql`; `phase_b_finance_extensions_smoke.sql` passed fine validation, audit and idempotency. |
+| Payment verification/rejection | **Requires real-device/security verification** | `payment_reviews`, `review_payment`, `payment_reviews_select`, and the Payment Review workspace; smoke covered verified/rejected transitions and reversed/closed-period denial. Real Member/Admin JWT behavior remains. |
+| Explicit meal price policy and bill generation | **Requires real-device/security verification** | `meal_billing_policies`, `meal_billing_runs`, `set_meal_billing_policy`, `generate_meal_bill`, and `0011_phase_b_extended_snapshot.sql`; smoke calculated `750` from three half-meal units at `250` and checked duplicate prevention. |
+| Partial/overpayment, due/advance, member-wise balances | **Implemented and verified (CI/JVM + DB smoke)** | `FinanceRepository.kt`, `AdminFinanceCalculator.kt`, `record_payment`, `payments`, `receipts`, and calculator tests. Device decoding and real account isolation remain open. |
+| Receipt PDF, share, void/reversal | **Requires real-device/security verification** | `ReceiptDocument.kt`, FileProvider, `payment_reversals`, `reverse_payment`, and Admin payment UI; database reversal smoke passed. Rendering, Bengali font, download/share and voided-receipt appearance need an installed device. |
+| Monthly consolidated statement/invoice export | **Partial** | Billing periods, meal billing runs and member ledgers exist, but there is no general monthly statement/PDF/CSV report generator. See Phase F. |
+| Overdue calculator, automatic reminders, external finance push | **Not implemented / configuration-blocked for push** | No overdue scheduler or delivery worker is configured. Durable `notifications` rows are not evidence of email/FCM delivery. |
 
-## Phase E — Discussion, private messages, suggestions, complaints
-
-| Requested feature | Classification | Exact evidence and remaining gap |
-| --- | --- | --- |
-| Mess group discussion | **Not implemented** | No conversation/message tables, RLS, repositories, or UI exist. |
-| Private member-to-Admin messaging | **Not implemented** | No participant privacy policy or private-message workflow exists. |
-| Anonymous suggestions with Main Admin-only identity | **Not implemented** | No sender-identity separation or protected identity RPC exists. |
-| Complaints/status/Admin response | **Not implemented** | No complaint/status/response workflow exists. |
-| Main Admin publication approval | **Not implemented** | No publication/moderation state exists. |
-| Unread/moderation/reporting | **Not implemented** | No read/moderation/report entities exist. |
-
-## Phase F — Reports, backup, settings, security
+## Phase C — Meals, rice, expenses, and cash book
 
 | Requested feature | Classification | Exact evidence and remaining gap |
 | --- | --- | --- |
-| Monthly financial/member/meal/rice/expense/cash reports | **Not implemented** | Domain snapshots exist, but no report generator or monthly report screen exists. |
-| Date/category/member filters | **Partially implemented** | Payment and charge filters exist in `AdminPaymentSection.kt`/`AdminChargeSection.kt`; no unified report filters exist. |
-| PDF receipts | **Requires real-device or security verification** | `ReceiptDocument.kt` and FileProvider exist; device rendering/sharing is unverified. |
-| CSV export | **Not implemented** | No CSV generator/export tests exist. |
-| Secure backup/history | **Not implemented** | Android backup is intentionally disabled for encrypted Auth data; no ERP backup service/history exists. |
-| Restore preview/integrity/failure recovery | **Not implemented** | No restore implementation or verified restore result exists. |
-| Role-appropriate audit access | **Partially implemented** | Audit writes and Main Admin SELECT policy exist; no audit UI and no narrow Admin member-event read policy exists. |
-| Member dashboard | **Requires real-device or security verification** | `DashboardScreen.kt` and `FinanceSection.kt` use backend finance state with empty/loading/error handling. |
-| Admin dashboard members/dues/meals/expenses | **Partially implemented** | Finance and Operations workspaces expose these separately; no unified Admin dashboard with notices/pending tasks exists. |
-| Main Admin system-management dashboard | **Backend exists but UI is missing** | Protected role/status/transfer/recovery functions exist; no dedicated system-management screen exists. |
-| Profile/account settings | **Partially implemented** | Own name/phone edit and password recovery/update exist; broader account settings do not. |
-| English/Bengali and dark/light | **Requires real-device or security verification** | `values`/`values-bn` resources and `ui/theme/Theme.kt` exist. Static parity passes; device typography/theme/layout checks remain. |
-| Session expiry/logout/recovery/reauthentication | **Partially implemented** | Auth state events, encrypted storage, sign-out, recovery, and Admin re-entry exist in Auth sources. Sensitive-action reauthentication and installed-device session tests are incomplete. |
+| Daily meal slots, half-meal entries, correction history | **Requires real-device/security verification** | `meal_entries`, `meal_reversals`, `record_meal_entry`, `reverse_meal_entry`, `OperationsMealSection.kt`, `OperationsRepository.kt`, and `phase3_smoke_transaction.sql`; exact validation and one-time reversal are covered by JVM/DB smoke. |
+| Meal ON/OFF schedules and pause/resume dates | **Requires real-device/security verification** | `meal_schedules`, `set_meal_schedule`, `0012_phase_c_operations_extensions.sql`, `0014_phase_c_extended_snapshot.sql`, and the Operations workspace; smoke covered schedule validation and same-mess behavior. |
+| Monthly meal totals/cost reports | **Partial** | `OperationsCalculator.kt` provides loaded active meal-unit totals and Phase B can generate meal charges; a date-grouped monthly meal/cost report is not implemented. |
+| Rice purchase unit/price/vendor/receipt reference | **Requires real-device/security verification** | `rice_purchases`, `record_rice_purchase`, `rice_movements`, and `ExtendedErpOperationsValidationTest.kt`; smoke verified total `5000`, metadata and authorization. Receipt reference is not a Storage attachment. |
+| Linked rice correction and negative-stock safety | **Requires real-device/security verification** | `rice_movement_reversals`, `reverse_rice_movement`, advisory-lock stock guard, and `0013_phase_c_cash_business_date_fix.sql`; rollback smoke covered linked/double reversal and source-date locking. |
+| Low-rice alerts and durable notifications | **Requires real-device/security verification** | `mess_settings`, `rice_stock_alerts`, `notifications`, threshold settings and snapshot projections in `0012`/`0014`; smoke covered alert creation/resolution and notification-write denial. No external push claim. |
+| Expense categories, vendor/reference, approval, reversal | **Requires real-device/security verification** | `expenses`, `expense_details`, `review_expense`, `update_expense_details`, `expense_reversals`, and Operations UI; smoke covered approval and linked cash behavior. File attachment storage is not implemented. |
+| Source-generated cash book and source-date locking | **Implemented and verified at DB-smoke level; device verification open** | `cash_book_entries`, source triggers, `cash_entry_business_date`, `0013`, and `phase_c_operations_extensions_smoke.sql`; smoke covered payment/expense/reversal source dates and direct-write denial. |
+| Cash/bank/mobile-wallet accounts and period locks | **Requires real-device/security verification** | `cash_accounts`, `cash_entry_accounts`, `cash_period_locks`, `upsert_cash_account`, `assign_cash_entry_account`, `close_cash_period`, and `0014`; real-JWT balance/reconciliation tests remain. |
+| Monthly rice/expense/cash reconciliation reports | **Not implemented** | Account rows and period locks are not a monthly report/export or independent reconciliation workflow. |
 
-## Cross-cutting database and test assessment
+## Phase D — Duties, rotation, notices, and notifications
 
-- **Implemented and verified at source/DB-smoke level:** ordered migrations `0001`–`0006`, RLS enabled on reviewed tables, authenticated SELECT-only ledger/operations grants, active-read hardening in `0005`, audited finance/operations RPCs, and rollback scripts `phase2_smoke_transaction.sql` / `phase3_smoke_transaction.sql`.
-- **Requires real-device or security verification:** anonymous, Member, Admin, suspended, departed, and cross-mess JWT behavior through PostgREST/Edge Functions; concurrent capacity and duplicate tests; installed Auth/deep-link/session behavior.
-- **Blocked by configuration or external service:** SMTP invitation/recovery delivery and FCM push. Auth password minimum remains `6`; SMTP fields are null. No secure backup/restore service is configured.
-- **CI/JVM only:** the current workflow proves static contracts, unit tests, compilation, public-config generation, and artifact upload. It does not prove real authorization, email/push delivery, PDF rendering, backup/restore, or user acceptance.
+| Requested feature | Classification | Exact evidence and remaining gap |
+| --- | --- | --- |
+| Duty calendar, assignment, deadline and completion/missed status | **Implemented and verified (CI/JVM + DB smoke); real JWT/device open** | `duties`, `create_duty`, `update_duty_status`, `0015_phase_d_duties_notices.sql`, `ExtendedErpScreen.kt`, `ExtendedErpDutiesValidationTest.kt`, and `phase_d_duties_notices_smoke.sql`. Commit `5abbb87`; runs `40190110513`/`40190114805` passed. |
+| Cannot-do requests, swaps, approval | **Implemented and verified (CI/JVM + DB smoke); real JWT/device open** | `duty_requests`, `request_duty_change`, `review_duty_request`, `duty_requests_select`, and the Duties & notices tab; smoke covered approval, swap/cannot-do and duplicate/idempotency behavior. |
+| Manager rotation and handover | **Implemented and verified (CI/JVM + DB smoke); real JWT/device open** | `manager_rotations`, `schedule_manager_rotation`, `activate_manager_rotation`, `rotations_select`, and handover fields; smoke covered activation and overlap rules. |
+| Notice CRUD/publish/schedule/cancel/archive, audience/expiry/read counts | **Implemented and verified (CI/JVM + DB smoke); real JWT/device open** | `notices`, `notice_reads`, `save_notice`, `set_notice_status`, `mark_notice_read`, `notices_select`, `0016_phase_d_extended_snapshot.sql`, and bilingual UI resources. |
+| Due scheduled publication | **Partial** | `publish_due_notices` is an authorized Admin RPC and passed rollback smoke, including duplicate-notification prevention. No automatic scheduler/cron is configured; an Admin must invoke it. |
+| External Android push, token registration, deep-link delivery | **Configuration-blocked / not implemented** | No FCM credentials, device-token table, push worker or delivery evidence exists. Durable `notifications` and `notice_reads` are in-app only. |
+| Notification payload bounds | **Implemented and verified (DB smoke)** | `0021_notification_payload_bounds.sql` keeps notification title/body bounded at 200/4000 so valid long source payloads do not fail; the Phase E smoke exercised a 4000-character published notice and rolled back. |
 
-## Incremental implementation order
+## Phase E — Messages, suggestions, and complaints
 
-1. **Phase A:** close the user-management audit gaps with capacity-safe backend provisioning/invitation and the actual Android workspace.
-2. **Phase B:** payment verification, fines, bill generation/overdue, and explicit meal-billing policy.
-3. **Phase C:** meal schedules, purchase/attachment/approval metadata, alerts, monthly summaries, and reconciliation.
-4. **Phase D:** duties, rotation, notices, and secure notification delivery.
-5. **Phase E:** private/group communication with sender-privacy enforcement and moderation.
-6. **Phase F:** reports/exports, verified backup/restore, settings, and final real-JWT/device security matrix.
+| Requested feature | Classification | Exact evidence and remaining gap |
+| --- | --- | --- |
+| Mess group discussion | **Requires real-device/security verification** | `messages`, `send_message`, `messages_select`, `message_reads`, `mark_message_read`, and Community tab in `ExtendedErpScreen.kt`; `0017`–`0018` and `phase_e_community_smoke.sql` cover group send, idempotency and read state. |
+| Private member-to-Admin messaging | **Requires real-device/security verification** | `send_message` requires an active same-mess recipient; non-Admin senders can target only Admin/Main Admin. Snapshot/RLS limit private rows to participants, with explicit Main Admin moderation visibility. No real two-account JWT conversation has run. |
+| Anonymous suggestions with separated identity | **Requires real-device/security verification** | `suggestions` contains no author column; `suggestion_identities` is separate and `suggestion_identities_main_admin_only` is the only identity SELECT policy. `create_suggestion`, `review_suggestion`, and the snapshot conditionally expose identity only to active Main Admin. Smoke checked separate identity storage and publication; member/Admin/cross-mess JWT leakage tests remain. |
+| Main Admin publication approval and rejection reason | **Implemented and verified at DB-smoke level; real JWT open** | `review_suggestion` is active-Main-Admin-only after `0020_phase_e_active_moderation_fix.sql`, locks the pending row, audits the decision, and requires a rejection reason. Android validation is in `ExtendedErpModels.kt`. |
+| Complaints, status and Admin response | **Requires real-device/security verification** | `complaints`, `create_complaint`, `respond_complaint`, `complaints_select`, and Community UI; smoke covered long subject/body/response and resolved status. Real member/Admin response visibility remains. |
+| Unread, reporting, moderation and report lifecycle | **Implemented and verified at DB-smoke level; real JWT/device open** | `message_reads`, `message_reports`, `report_message`, `review_message_report` (`0019`), `moderate_message` (`0020`), report/moderation UI and audit writes; smoke covered report review, hide, direct-write denial and missing-profile denial. |
+| Community input validation and bilingual resources | **Implemented and verified (CI/JVM); real-device/security verification open** | `ExtendedErpCommunityValidationTest.kt`, `ExtendedErpModels.kt`, `ExtendedErpRepository.kt`, and EN/BN `strings.xml`; static checks passed locally. Current-head CI must be observed before claiming compilation. |
 
-Phase A status is updated after implementation; unresolved delivery and verification dependencies remain explicit rather than being converted into success claims.
+## Phase F — Reports, backup, settings, and final security
+
+| Requested feature | Classification | Exact evidence and remaining gap |
+| --- | --- | --- |
+| Unified monthly financial/member/meal/rice/expense/cash reports | **Not implemented** | Existing snapshots and calculators are data sources, not a unified monthly report generator or report screen. |
+| Date/category/member filters | **Partial** | Payment/charge filters exist in `AdminPaymentSection.kt` and `AdminChargeSection.kt`; there is no unified report filter model. |
+| PDF receipts | **Requires real-device/security verification** | `ReceiptDocument.kt` and FileProvider exist; device rendering and sharing remain unverified. |
+| CSV export | **Not implemented** | No CSV generator, export contract or tests exist. |
+| Secure backup/history and restore preview/integrity/failure recovery | **Not implemented** | Android backup is intentionally disabled for encrypted Auth data; no ERP backup/restore service or verified restore result exists. |
+| Role-appropriate audit access | **Partial** | Audit writes and Main Admin/member-management SELECT policies exist; there is no comprehensive cross-module audit report/UI or real-JWT matrix. |
+| Member/Admin/Main Admin dashboards | **Partial** | `DashboardScreen.kt`, Finance/Operations/Extended ERP workspaces expose separate backend data; a unified role-specific operational/reporting dashboard is not complete. |
+| Profile/account and mess settings | **Partial** | Own profile edit, Auth recovery/update, `mess_settings`, locale, threshold and meal-reminder toggles exist; broader account/security settings and delivery configuration do not. |
+| English/Bengali and dark/light | **Requires real-device/security verification** | `values`/`values-bn`, `ui/theme/Theme.kt`, and static parity checks exist; device typography, contrast, layout and process-restoration checks remain. |
+| Session expiry/logout/recovery/reauthentication | **Partial** | Auth state events, encrypted storage, sign-out, recovery and Admin re-entry exist in Auth sources. Sensitive-action reauthentication and installed-device session tests are incomplete. |
+| Final anonymous/Member/Admin/suspended/departed/cross-mess security matrix | **Requires real-device/security verification** | Rollback injected-claims smoke is not a substitute for real PostgREST JWT, concurrent requests, Edge Function delivery, or installed-device testing. |
+
+## Cross-cutting evidence and blocker register
+
+- **Applied backend slices:** Phase A `0007`–`0008`; Phase B `0009`–`0011`; Phase C `0012`–`0014`; Phase D `0015`–`0016`; Phase E `0017`–`0022` on `iwoiwgkaevobxqojyphb`. Rollback scripts are under `supabase/tests/`; no smoke rows are retained.
+- **Observed green Android heads:** Phase A `1f6876b` (`40188681745`, `40188685214`); Phase B `1eaa68f` (`40189238379`, `40189241738`); Phase C `04a9681` (`40189784504`, `40189787023`); Phase D `5abbb87` (`40190110513`, `40190114805`). Phase E `4f376d7` (`40190673127`, `40190677111`) also passed.
+- **Auth/configuration:** signup is disabled, `smarttransparentmess://auth` is allowed, refresh rotation is enabled, email rate limit is `2`, password minimum is `6`, and SMTP is unconfigured. No outbound recovery/invitation delivery is claimed.
+- **Push/backup:** FCM and secure ERP backup/restore are not configured. No service-role secret, database password, signing key, or other privileged credential is in Android source, APK configuration, logs, Variables, or audit records.
+- **Environment:** local full Android/Gradle execution is unavailable; only observed GitHub Actions runs are build evidence. GitHub Variables/branch-protection writes previously returned 403 and were not repeatedly retried.
+- **Required before real data:** real-JWT/PostgREST and Edge Function authorization tests, concurrent capacity/duplicate tests, installed Android workflows, PDF/device checks, SMTP delivery configuration and FCM/backup design. These remain explicit blockers, not implied successes.

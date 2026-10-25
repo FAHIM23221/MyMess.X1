@@ -1,130 +1,134 @@
 # Implementation status
 
-Last updated: **2026-10-25** (Asia/Dhaka). This register distinguishes source presence, executed backend checks, CI compilation/JVM tests, and still-open real-JWT/device verification.
+Last updated: **2026-10-25** (Asia/Dhaka). Branch `arena/34fa0299-mymess-x1`; PR `#2` remains open. Current source head is `4f376d7c15d0886098a9866b5d1d6c28e281e3a2`.
 
-Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCKED**, **DEFERRED**.
+Status vocabulary: **COMPLETE** means the named slice has the evidence listed, not production readiness; **READY_FOR_TESTING** means source/backend checks exist but real JWT/device or external delivery is still required; **IN_PROGRESS** means adjacent requested behavior remains; **BLOCKED** identifies an external/configuration dependency; **DEFERRED** means no implementation is claimed.
 
 ## Environment and safety boundary
 
-- Repository branch: `arena/34fa0299-mymess-x1`; PR `#2` remains open.
-- Phase 3 implementation commit with observed green Android verification: `6be5cd91969570d56cd3355003b7738027180fd1`, run `40161969261`.
-- Current source version after the Phase 3 version update: `0.4.0-phase3`, versionCode `5`. Install only an artifact from a green run of the current PR head; do not treat an older artifact as the current source.
-- Active Supabase project: `mymess-x1-phase1` / `iwoiwgkaevobxqojyphb` (`ap-south-1`, PostgreSQL 17).
-- Existing project `mymess` / `jiiexmjczpzxikhmlgbh` is outside the implementation boundary and has not been modified.
-- Only the Android publishable key is present in app configuration. No service-role key, database password, signing key, or other privileged credential is stored here.
-- Backend work is non-destructive and additive where possible. Migration `0005` tightens existing SELECT policies in place; RLS was not disabled and no data was deleted.
+- Active Supabase project: `mymess-x1-phase1` / `iwoiwgkaevobxqojyphb` (`ap-south-1`, PostgreSQL 17). Existing `mymess` / `jiiexmjczpzxikhmlgbh` was not modified.
+- Only the Android publishable key is used by the app. No service-role key, database password, signing key, or privileged credential is stored in the repository, APK configuration, logs, Variables, or audit records.
+- Backend changes are non-destructive and additive where possible. RLS remains enabled; no production data was erased and no security control was disabled to make a test pass.
+- App version remains `0.4.0-phase3`, versionCode `5`. Use only an artifact from a green run of the current head; the version string is not evidence that a later phase is device-verified.
 
 ## Phase register
 
 | Phase | Status | Verified state | Next action |
 | --- | --- | --- | --- |
-| 0 — repository, native Android, CI | **COMPLETE** | CI completes static/security checks, JVM tests, debug build, built-config verification, and artifact upload. | Keep checks mandatory for subsequent slices. |
-| 1 — Auth, profiles, roles, RLS, Main Admin | **COMPLETE** | Foundation migration and one-time singleton Main Admin bootstrap are applied and read back. | Exercise installed-app Auth/profile and role-management requirements. |
-| 2 — billing, charges, payments, receipts | **IN_PROGRESS** | Four finance migrations plus active-read hardening are applied. Rollback smoke and live RLS/grant checks passed. Member/Admin Android finance, filters, member-wise balances, and PDF source compile and pass JVM tests. | Run real-JWT authorization and installed-device Member/Admin/PDF workflows before real financial data. |
-| 3 — meals, rice, fines, expenses, cash book | **IN_PROGRESS** | Meal/rice/expense/cash-book migration, Android workflow, JVM tests, and rollback smoke are implemented and verified at source/backend-smoke level. | Test real JWT/device behavior; implement fines, linked rice correction, and explicit meal-billing rules. |
-| 4 — duties and notices | **DEFERRED** | No operational source is claimed. | Implement additive tables/RPCs and Android workflows. |
-| 5 — suggestions, complaints, messaging | **DEFERRED** | No operational source is claimed. | Implement abuse controls, RLS, and audit-aware workflows. |
-| 6 — reports, backup, audit, hardening | **IN_PROGRESS** | Audit foundation, audited finance/operations RPCs, receipt PDF export, and active-read hardening exist. General reports, backup/restore, audit UI, and broader hardening do not. | Expand integration/security matrix and add broader exports/settings without weakening RLS. |
+| 0 — repository, native Android, CI | **COMPLETE** | GitHub Actions performs static/security checks, JVM tests, debug build, public-config verification and artifact upload. | Keep exact-head checks required for every slice. |
+| 1 — Auth, profiles, roles, RLS, Main Admin | **COMPLETE / READY_FOR_TESTING** | Foundation migration and one-time Main Admin bootstrap are applied/read back. Auth/profile/role source is wired. | Run installed Auth, deep-link, role and session tests. |
+| 2 — billing, charges, payments, receipts | **READY_FOR_TESTING** | Finance migrations, rollback smoke, member/Admin finance UI, filters, balances and PDF source are implemented; Phase B extensions add fines, verification and meal billing. | Real-JWT financial matrix and device/PDF workflows. |
+| 3 — meals, rice, expenses, cash book | **READY_FOR_TESTING** | Phase C schedules, purchase metadata, linked corrections, alerts, approvals, accounts and locks are applied; rollback smoke and exact-head CI passed. | Real-JWT/device operations and monthly reporting. |
+| 4 — duties, rotation, notices | **READY_FOR_TESTING** | Phase D backend, Android workspace, bilingual resources, validation tests, rollback smoke and exact-head CI passed. | Real-JWT/device checks; configure a scheduler only through an approved path if automatic publication is required. |
+| 5 — messages, suggestions, complaints | **READY_FOR_TESTING** | Phase E backend and Community UI are committed; rollback smoke passed message/suggestion/complaint/moderation and long-payload cases. Exact-head CI runs `40190673127` and `40190677111` passed. | Run two-account real-JWT privacy and installed-device tests. |
+| 6 — reports, backup, audit, hardening | **IN_PROGRESS** | Audit foundation, per-module settings, receipt PDF source and active-read hardening exist. Unified reports, CSV, backup/restore and final security matrix do not. | Implement reports/backup/settings without weakening RLS; retain all blockers below. |
 
-## Phase 2 implementation checklist
+## Delivered implementation checklist
 
-| Item | Status | Evidence and remaining boundary |
-| --- | --- | --- |
-| Integer minor-unit money and due/advance arithmetic | **COMPLETE** | JVM tests cover precision, opening due, partial payment, overpayment, credits, reversal visibility, member separation, and overflow rejection. |
-| Billing periods and non-overlap RPC | **READY_FOR_TESTING** | Applied; create/close and closed-period rejection passed rollback smoke. Real-JWT/device tests remain. |
-| Charges and opening/credit/debit adjustments | **READY_FOR_TESTING** | Audited RPCs, entry/history UI, search, and category filtering are compiled; charge/carry-forward smoke passed. |
-| Payments, request IDs, and receipts | **READY_FOR_TESTING** | Payment/receipt/audit and duplicate rejection passed smoke. UI includes member/receipt/period/reference search, method/status filters, retry request-ID retention, and reversal. |
-| Member-wise due monitoring | **READY_FOR_TESTING** | Calculator retains zero-balance and historical members, isolates each member's advance/due, and has JVM coverage. Device rendering remains open. |
-| Carry-forward | **READY_FOR_TESTING** | Due/advance carry-forward and duplicate rejection passed rollback checks; Admin source/target UI is compiled. |
-| Member finance dashboard | **READY_FOR_TESTING** | Compiled and JVM-tested. Real backend decoding and empty/loading/error behavior need device verification. |
-| PDF download/share | **READY_FOR_TESTING** | Android `PdfDocument`, document picker, and non-exported `FileProvider` compiled. Rendering, Bengali fonts, and share targets need device verification. |
+### Phase A — member management
 
-## Phase 3 implementation checklist
+- `ui/members/MemberManagementScreen.kt`, `MemberDetailSection.kt`, `presentation/MemberManagementViewModel.kt`, `data/members/MemberManagementRepository.kt`: searchable/sortable/filterable members, invitation/lifecycle/role/audit workspaces.
+- `0007_member_management.sql` and `0008_member_management_type_fix.sql`: `member_invitations`, departure metadata, capacity helper, provisioning/acceptance/resend/cancel/edit/lifecycle RPCs, audited role/status transitions, and member-management audit policy.
+- `supabase/functions/member-invitation/index.ts`: deployed invitation function with JWT verification; delivery state is explicit and no success is inferred without provider confirmation.
+- `phase_a_member_management_smoke.sql`: passed visibility, invitation idempotency, duplicate/capacity, cancellation, audit, direct-write denial, helper privilege and missing-profile checks with zero retained smoke rows.
+- `0022_member_join_date_business_timezone.sql` plus `phase_a_business_timezone_smoke.sql`: passed Asia/Dhaka join-date boundary regression in a UTC outer session.
+- **Open:** SMTP delivery, real invitation acceptance/resend, concurrent real-JWT capacity/transfer tests and installed-device checks.
 
-| Item | Status | Evidence and remaining boundary |
-| --- | --- | --- |
-| Meal entry and reversal | **READY_FOR_TESTING** | Exact half-meal validation, active-member selection, duplicate request IDs, reasoned one-time reversal, audited RPC, history UI, and rollback smoke exist. No automatic meal charge is generated. |
-| Rice stock movements | **READY_FOR_TESTING** | Whole-gram validation, exact stock summary, per-mess locked insufficient-stock guard, duplicate request IDs, and rollback smoke exist. Linked rice reversal is not implemented. |
-| Expense entry and reversal | **READY_FOR_TESTING** | Exact minor-unit/category/date/reference validation, duplicate request IDs, reasoned one-time reversal, cash-book integration, and rollback smoke exist. |
-| Cash book | **READY_FOR_TESTING** | Four source triggers, unique source IDs, payment/reversal backfill, read-only Android history/totals, direct-write denial smoke, and zero post-rollback rows verified. |
-| Operations navigation and bilingual UI | **READY_FOR_TESTING** | Admin/Member role-appropriate navigation and Meals/Rice/Expenses/Cash book tabs compiled in run `40161969261`; EN/BN resource parity and JVM tests passed. Device accessibility/responsiveness remains open. |
-| Fines and automatic meal billing | **DEFERRED** | No complete workflow is claimed. Charge category `FINE` alone is not a fines module. |
+### Phase B — finance extensions
+
+- `0009_phase_b_finance_extensions.sql`, `0010_phase_b_finance_request_id_fix.sql`, `0011_phase_b_extended_snapshot.sql`: `fines`, `payment_reviews`, `meal_billing_policies`, `meal_billing_runs`, audited RPCs and snapshot projections.
+- `ExtendedErpModels.kt`, `ExtendedErpDtos.kt`, `ExtendedErpRepository.kt`, `ExtendedErpScreen.kt`: Billing workspace and validated fine/payment-review/policy/bill actions.
+- `phase_b_finance_extensions_smoke.sql`: passed fine/payment/billing rules, `750` from three half-meal units at `250`, idempotency, reversed/closed-period rejection, direct-write denial and missing-profile denial. Snapshot shape checks used injected claims.
+- **Open:** real JWT/device verification, general monthly statements, overdue automation and external reminder delivery.
+
+### Phase C — operations controls
+
+- `0012_phase_c_operations_extensions.sql`, `0013_phase_c_cash_business_date_fix.sql`, `0014_phase_c_extended_snapshot.sql`: meal schedules, rice purchase metadata, linked reversals, expense approvals, settings, alerts, cash accounts/locks and source-date cash locking.
+- Operations and Extended ERP Android sources expose schedules, rice purchases/reversals, expense review, cash assignment/close, settings and notifications with EN/BN resources.
+- `phase_c_operations_extensions_smoke.sql`: passed schedules, rice total `5000`, stock alerts, linked/double reversal, expense approval, cash assignment, source-date locking, notification-write denial and missing-profile denial. Snapshot/settings checks used injected claims.
+- Commit `04a9681`; exact-head push/PR runs `40189784504` and `40189787023` passed.
+- **Open:** real JWT/device operations, monthly reports and actual file attachments (only receipt references currently exist).
+
+### Phase D — duties and notices
+
+- `0015_phase_d_duties_notices.sql`, `0016_phase_d_extended_snapshot.sql`: `duties`, `duty_requests`, `manager_rotations`, `notices`, `notice_reads`, notification link/deduplication and snapshot wrapper.
+- `ExtendedErpDutiesValidationTest.kt`, Community-independent Duties & notices tab and EN/BN resources cover assignment, cannot-do/swap, completion, rotation, notice publication/read actions.
+- `phase_d_duties_notices_smoke.sql`: passed duty idempotency, cannot-do approval, completion, rotation activation, notice read/publish, scheduled-due publication, duplicate-notification prevention, direct-write denial and missing-profile denial. No smoke rows were retained.
+- Commit `5abbb87`; exact-head push/PR runs `40190110513` and `40190114805` passed.
+- **Open:** real JWT/device verification; `publish_due_notices` requires an Admin RPC call because no automatic scheduler or external push delivery is configured.
+
+### Phase E — community and moderation
+
+- `0017_phase_e_community.sql`: `messages`, `message_reads`, `message_reports`, `suggestions`, separate `suggestion_identities`, `complaints`, RLS and authenticated RPCs.
+- `0018_phase_e_extended_snapshot.sql`: authorized messages/suggestions/complaints/report projections. Public suggestion rows contain no author; identity is conditionally projected only for active Main Admin.
+- `0019_phase_e_message_report_review.sql`: report `REVIEWED`/`DISMISSED` lifecycle.
+- `0020_phase_e_active_moderation_fix.sql`: explicit active-Main-Admin checks and pending-suggestion row lock.
+- `0021_notification_payload_bounds.sql`: bounded notification title/body compatibility for valid long source payloads; long-input rollback smoke passed.
+- `ExtendedErpCommunityValidationTest.kt`, Community tab, DTO/repository RPC mappings and EN/BN resources: group/private messages, unread/read, reporting/moderation, anonymous suggestion review, complaints and Admin responses.
+- `phase_e_community_smoke.sql`: passed message idempotency/read/report/review/moderation, self-private denial, suggestion identity separation/publication, long complaint response, long published notice, direct-write denial and missing-profile denial; rollback retained no rows.
+- Commit `4f376d7`; exact-head push/PR runs `40190673127` and `40190677111` passed static checks, JVM tests, `assembleDebug`, public-config verification and artifact upload.
+- **Open:** real two-account JWT privacy (especially anonymous identity and private messages), cross-mess/suspended/departed tests, concurrent submissions and installed-device UX.
 
 ## Executed Android verification
 
-For implementation commit `6be5cd91969570d56cd3355003b7738027180fd1`, push workflow `40161969261` completed:
+| Source head | Workflow runs | Observed result |
+| --- | --- | --- |
+| `1f6876b` Phase A | `40188681745`, `40188685214` | Static checks, JVM tests, `assembleDebug`, public-config verification and artifact upload passed. |
+| `1eaa68f` Phase B | `40189238379`, `40189241738` | Same workflow completed successfully. |
+| `04a9681` Phase C | `40189784504`, `40189787023` | Same workflow completed successfully. |
+| `5abbb87` Phase D | `40190110513`, `40190114805` | Same workflow completed successfully. |
+| `4f376d7` Phase E | `40190673127`, `40190677111` | Static checks, JVM tests, debug build, public-config verification and artifact upload passed. |
 
-- static XML/resource/security contract checks;
-- all JVM unit tests, including new operations and member-balance tests;
-- `assembleDebug`;
-- generated public `BuildConfig` verification;
-- debug APK artifact upload.
-
-The first Phase 3 run `40161841254` found timestamp-serializer/payment-filter compile errors; commit `6be5cd9` corrected them and the subsequent run passed. No failed run is represented as a valid artifact.
-
-No sandbox APK checksum or installation is claimed. Signed-blob artifact download previously failed with `EOF`. No connected login, financial/operational mutation from the app, PDF rendering, or production release is claimed.
+The sandbox lacks a reliable full local Android/Gradle runtime. Compilation is claimed only for the exact observed GitHub Actions heads above, never from a fictitious local build. No APK installation or production release is claimed.
 
 ## Live backend verification
 
 Applied only to `iwoiwgkaevobxqojyphb`:
 
-1. `20261025023033_phase1_foundation`
-2. `20261025030611_phase2_billing_payments`
-3. `20261025030642_phase2_view_grants`
-4. `20261025033247_phase2_admin_finance_methods`
-5. `20261025041631_phase2_active_read_hardening`
-6. `20261025041711_phase3_meals_rice_expenses_cashbook`
+1. Phase 1–3 foundation/finance/operations migrations `0001`–`0006` and their earlier rollback/grant/RLS evidence.
+2. Phase A `0007`–`0008` and invitation Edge Function version 1.
+3. Phase B `0009`–`0011`.
+4. Phase C `0012`–`0014`.
+5. Phase D `0015`–`0016`.
+6. Phase E `0017`–`0022`, including active moderation, notification payload and join-date timezone corrections.
 
-Post-smoke read-only inspection found:
+Post-smoke checks found no retained smoke operational rows. New tables have RLS enabled and authenticated SELECT-only table grants; mutations are intended through audited RPCs. Anonymous EXECUTE is revoked for the new public mutation functions. These are live read-back/rollback observations, not a real-JWT penetration test.
 
-- Profiles `1`; Main Admin assignments `1`; audit rows `1`.
-- Billing periods, charges, adjustments, payments, receipts, reversals, meals, meal reversals, rice movements, expenses, expense reversals, and cash-book entries each `0`; rollback tests left no operational/financial rows.
-- All six hardened Phase 2 SELECT policies require `is_active_user()` and same-mess/member predicates.
-- Six new Phase 3 tables have active same-mess SELECT policies and authenticated SELECT-only grants; anonymous table grants were not added.
-- Five Phase 3 RPCs have anonymous EXECUTE `false` and authenticated EXECUTE `true`, with internal active same-mess Admin checks still mandatory.
-- All four payment/payment-reversal/expense/expense-reversal cash-book triggers are present.
-
-Auth remains signup-disabled with the Android deep link allowed, refresh-token rotation enabled, and email-send rate limit `2`. SMTP remains unconfigured. Auth password minimum remains `6`.
+Auth remains signup-disabled with `smarttransparentmess://auth`, refresh rotation enabled, email rate limit `2`, password minimum `6`, and SMTP unconfigured. Existing `mymess` remains untouched.
 
 ## Blocker and verification register
 
-### READY_FOR_TESTING — installed Android verification
-
-Install the APK from the latest green current-head PR run, sign in with the confirmed Main Admin account, and verify:
-
-1. profile and Member finance empty states;
-2. Admin-only Finance navigation and Member-safe Operations navigation;
-3. period/charge/adjustment/payment/reversal/carry-forward workflows and filters;
-4. member-wise due/advance and advance-credit preservation;
-5. valid and reversed PDF download/share, including Bengali appearance;
-6. meal/rice/expense entry, reversal, duplicate-submit behavior, and cash-book updates;
-7. Member own-meal/read-only behavior, light/dark themes, Bengali layouts, rotation, and process restoration.
-
-Installation and all connected device results remain unverified.
-
 ### READY_FOR_TESTING — real PostgREST/JWT authorization matrix
 
-Rollback SQL smoke used injected claims, not real PostgREST tokens. Before real data, test anonymous, Member, Admin, suspended, and cross-mess JWTs for every table/view and mutation RPC. Include concurrent duplicate submissions, carry-forwards, rice stock-outs, and confirmation that suspended Members receive no Phase 2/3 rows.
+Rollback SQL used injected claims, not real PostgREST tokens. Test anonymous, Member, Admin, Main Admin, suspended, departed and cross-mess JWTs for every table/view/RPC. Include concurrent capacity/duplicate submissions, role transfer/recovery, private-message participant isolation, suggestion identity non-disclosure, complaint visibility, notice audience/expiry and notification read/write denial.
+
+### READY_FOR_TESTING — installed Android verification
+
+Install only the latest green current-head artifact and verify Auth/deep links, profile, member management, finance/receipt PDF, operations, duties/notices, Community privacy, Bengali/English, dark/light, rotation/process restoration, loading/error/empty states and duplicate-submit behavior. No installed-device result is currently claimed.
+
+### BLOCKED — outbound Auth/invitation email
+
+SMTP is unconfigured. `member-invitation` is deployed, but no real invitation, resend, recovery email or acceptance delivery is verified. The app must continue to expose the exact delivery status rather than report a fake success.
+
+### BLOCKED — external push and automatic due publication
+
+FCM credentials, token registration and a push worker are absent. Durable notifications are in-app only. Scheduled notices become due only when authorized `publish_due_notices` is invoked; no scheduler is configured or claimed.
 
 ### BLOCKED — Auth password minimum
 
-The Auth connector schema does not expose a writable `password_min_length` field. Read-back confirms minimum `6`. Do not claim a stronger minimum until a supported approved path and read-back verify it.
+The Auth connector does not expose a writable `password_min_length`; read-back remains `6`. Do not claim a stronger minimum without an approved supported configuration path and read-back.
 
-### BLOCKED — outbound recovery email
+### NOT IMPLEMENTED — reports, CSV and backup/restore
 
-SMTP is unconfigured, so production-like password-recovery delivery is not verified.
+Unified monthly reports, CSV export, secure ERP backup/history, restore preview/integrity/failure recovery and comprehensive audit reporting remain open. Receipt PDF source is not a general report/backup solution.
 
-### OPTIONAL REPAIR — GitHub Actions repository Variables
+### ENVIRONMENT NOTE — GitHub and local tooling
 
-Variables list/create APIs previously returned HTTP 403; no values were written and denied writes were not retried. Bundled non-privileged configuration removes this dependency for debug builds.
-
-### ENVIRONMENT NOTE — local Gradle and artifact downloads
-
-The sandbox lacks a reliable full local Android/Gradle runtime and signed-blob downloads have failed. Compilation is therefore claimed only from observed GitHub Actions runs, not from a fictitious local build.
+GitHub Variables, branch-protection and Actions-permissions writes previously returned integration 403; denied writes were not repeatedly retried. Bundled non-privileged configuration remains the debug build path. Signed-blob artifact downloads and local Gradle setup are unreliable; use observed run metadata and exact-head artifacts only.
 
 ## Immediate queue
 
-1. **READY_FOR_TESTING:** execute the real-JWT/PostgREST matrix and current-head installed-device checklist before real member/financial data.
-2. **IN_PROGRESS:** add Phase 3 fines, linked rice correction, and explicit meal-billing rules as separate reviewed slices.
-3. **DEFERRED:** implement Phases 4–5 and the remaining Phase 6 reports/backup/audit/settings workflows; none is represented as complete.
-4. **BLOCKED:** raise Auth password minimum only through a supported approved configuration path; current value is `6`.
+1. Observe Phase E exact-head CI; if it fails, fix only the reported source issue and rerun the normal workflow.
+2. Update this register and `FEATURE_AUDIT.md` with the observed Phase E run result; do not promote it to real-JWT/device verification.
+3. Implement Phase F reports/exports and settings only after preserving the Phase A–E authorization boundaries; design backup/restore separately with explicit integrity and failure tests.
+4. Keep SMTP, FCM, real-JWT, concurrency, installed-device and production-release blockers visible until independently verified.
