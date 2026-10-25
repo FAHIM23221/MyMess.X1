@@ -9,7 +9,9 @@
 - `MoneyTest.kt`: exact BDT minor-unit parsing/formatting, excess precision, invalid input, and full `Long` formatting boundaries.
 - `FinanceModelsTest.kt`: opening due, partial payment, overpayment/advance, credit offset, reversal visibility, and overflow rejection.
 - `FinanceDtosTest.kt`: exact backend/domain balance consistency, unknown enum rejection, and payment/receipt mapping.
-- `supabase/tests/phase2_smoke_transaction.sql`: rollback-only RPC, duplicate, reversal, closed-period, due/advance carry-forward, and authorization smoke coverage.
+- `AdminFinanceCalculatorTest.kt`: per-member due/advance separation, reversed-payment exclusion, adjustment totals, missing periods, and aggregate overflow.
+- `FinanceEntryValidatorTest.kt`: Dhaka payment-date conversion, future-date rejection, amount limits, optional text, and charge/adjustment/period validation.
+- `supabase/tests/phase2_smoke_transaction.sql`: rollback-only RPC, duplicate, reversal, closed-period, due/advance carry-forward, expanded method/category, future-date, and authorization smoke coverage.
 - `scripts/verify_project.py`: dependency-free XML/resource checks, bilingual parity, selected SQL invariants, public-config validation, workflow presence, and privileged-key guard.
 - `scripts/verify_built_config.py`: reads generated debug `BuildConfig` without printing values and fails unless a valid HTTPS Supabase URL and publishable key were actually compiled.
 - `.github/workflows/android-debug.yml`: runs static checks, `testDebugUnitTest`, `assembleDebug`, and built-config verification before uploading only the debug APK artifact.
@@ -23,7 +25,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The local workspace does not provide the required Android SDK/Gradle runtime. The Phase 1 main workflow run `40153010838` did execute `testDebugUnitTest` and `assembleDebug` successfully and uploaded an unconfigured APK. Phase 2 run `40157238078` then completed the static checks, new finance JVM tests, `assembleDebug`, and artifact upload successfully at commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. Configured run `40157837474` additionally passed generated-`BuildConfig` verification and uploaded artifact `12585247757`. The Phase 2 remote migration, grant inspection, and rollback-only SQL smoke transaction have also run; real-JWT API and installed-device tests remain open.
+The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. This sandbox lacks a complete local Android/Gradle runtime and cannot reliably download signed artifacts, so Android build results are taken only from observed GitHub Actions runs. Current code commit `42c196cac4e21ab1282094624b0baa922faf0c6f` passed static checks, all JVM tests, `assembleDebug`, generated-`BuildConfig` verification, and artifact upload in run `40159571594`; artifact `12586620126` is version `0.3.0-phase2` / versionCode `4`. Phase 2 migrations, grant/RLS/constraint inspection, and the expanded rollback-only SQL smoke transaction have also run. Real-JWT API and installed-device tests remain open.
 
 ## Supabase integration test matrix before real data
 
@@ -58,4 +60,4 @@ Use separate test Auth accounts and a disposable project. Test both allowed and 
 | Payment exceeds charges/opening due | Advance credit, not a negative outstanding due |
 | Admin targets another mess or suspended identity calls RPC | Rejected by server-side active same-mess checks |
 
-Also test password recovery redirect, PKCE callback, refresh after process restart, local and remote sign-out, and logs after a deliberately invalid Auth request. See `SECURITY.md` for the unresolved token-log verification and `PHASE2_FINANCE.md` for the executed rollback-only smoke scope.
+Also test password recovery redirect, PKCE callback, refresh after process restart, local and remote sign-out, and logs after a deliberately invalid Auth request. On Android, verify valid and reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permission grants, and that no arbitrary cache file is exposed through the receipt `FileProvider`. See `SECURITY.md` for unresolved token-log verification and `PHASE2_FINANCE.md` for the executed rollback-only smoke scope.

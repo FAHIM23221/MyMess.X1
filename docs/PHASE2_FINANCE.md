@@ -2,22 +2,38 @@
 
 ## Scope currently implemented
 
-Phase 2 adds an append-oriented billing/payment foundation and a read-only member finance dashboard. It does not claim the whole ERP is complete.
+Phase 2 now includes the member finance dashboard and an Admin/Main Admin finance workspace. It does not claim that the whole ERP or installed-device verification is complete.
+
+### Backend ledger
 
 - Billing periods with validated date ranges and an overlap guard.
 - Charges, opening due, debit adjustments, and credit adjustments.
-- Admin/Main Admin payment entry RPC with a per-mess unique `client_request_id` for duplicate-submission rejection.
-- One unique receipt per payment.
-- Compensating payment reversal: the original payment stays in history, its receipt is voided, and a separate reversal plus audit entry is written.
+- Explicit payment methods: `CASH`, `BKASH`, `NAGAD`, `BANK`, `MOBILE_BANKING`, and `OTHER`.
+- Detailed charge categories including seat rent, meals, electricity, Wi-Fi, gas, water, fines, utilities, and services.
+- Admin/Main Admin mutations with per-mess unique client request IDs where applicable.
+- One immutable receipt record per payment.
+- Compensating payment reversal: the original payment remains visible, its receipt is voided, and a separate reversal plus audit entry is written.
 - Closed-period mutation rejection and due/advance carry-forward into an open period.
 - `security_invoker` views for the signed-in member's per-period summary and recent receipts.
-- Exact Android minor-unit parsing/formatting and domain calculations. No `Double`/`Float` ledger arithmetic.
 
-The Admin Android entry screens are still deferred. Server RPC existence is not represented as a finished Admin UI.
+### Native Android
+
+- Exact minor-unit parsing/formatting and overflow-safe domain calculations; no floating-point ledger arithmetic.
+- Member dashboard with loading, error, empty, due/advance, and reversed-receipt states.
+- Role-gated Admin/Main Admin finance tab; members do not receive the Admin navigation item.
+- Overview, payment/receipt, charge/adjustment, and billing-period/carry-forward sections.
+- Per-member overview aggregation: one member's advance does not cancel another member's outstanding due.
+- Bilingual English/Bengali labels and validation feedback.
+- Duplicate-submit prevention and stable request-ID reuse after a failed mutation attempt.
+- Post-mutation snapshot refresh; a refresh failure is shown separately and is never hidden by a success notice.
+- PDF receipt download through the Android document picker and PDF sharing through a non-exported `FileProvider`.
+- Reversed receipts remain identifiable as reversed. PDFs include the real immutable receipt record ID; no nonexistent cryptographic receipt hash is claimed.
+
+Source presence and compilation are not represented as installed-device correctness. Real login, mutation, PDF rendering, and sharing still require device verification.
 
 ## Balance invariant
 
-All amounts are non-negative `bigint` minor units (BDT poisha). The sign is carried by the entry kind or the resulting balance:
+All amounts are non-negative `bigint` minor units (BDT poisha). The sign is carried by the entry kind or resulting balance:
 
 ```text
 net_due = opening_due + charges + debit_adjustments
@@ -27,7 +43,9 @@ outstanding_due = max(net_due, 0)
 advance_credit  = max(-net_due, 0)
 ```
 
-A reversed payment is excluded from `valid_payments`, but remains visible with its reversal reason and voided receipt. Zero due and zero advance mean settled. Carry-forward writes `OPENING_DUE` for a positive net or `CREDIT` for a negative net. A partial unique index prevents the same source/member/target carry-forward from being inserted twice.
+A reversed payment is excluded from `valid_payments` but remains visible with its reversal reason and voided receipt. Zero due and zero advance mean settled. Carry-forward writes `OPENING_DUE` for a positive net or `CREDIT` for a negative net. A partial unique index prevents duplicate source/member/target carry-forward rows.
+
+The Admin overview first calculates each member's period balance and then sums non-negative dues and advances. It therefore does not net one member's advance against another member's due.
 
 ## Mutation boundary
 
@@ -43,26 +61,44 @@ Authenticated roles receive only `SELECT` on ledger tables and the two member vi
 | `reverse_payment` | Preserve payment, add reversal, void receipt, audit reason |
 | `carry_forward_balance` | Carry a closed period's net into an open target once |
 
-UI role checks are not authorization. The RPCs repeat the server-side role/mess checks, and views use `auth.uid()` rather than a client-supplied member ID.
+UI role checks are not authorization. The RPCs repeat server-side role/mess checks, and member views use `auth.uid()` rather than a client-supplied member ID.
 
 ## Live migration and smoke result
 
-On 2026-10-25, migrations `0002_phase2_billing_payments.sql` and `0003_phase2_view_grants.sql` were applied only to project `iwoiwgkaevobxqojyphb`.
+On 2026-10-25, the following migrations were applied only to project `iwoiwgkaevobxqojyphb`:
 
-Observed checks:
+| Recorded migration | Source |
+| --- | --- |
+| `20261025030611_phase2_billing_payments` | `0002_phase2_billing_payments.sql` |
+| `20261025030642_phase2_view_grants` | `0003_phase2_view_grants.sql` |
+| `20261025033247_phase2_admin_finance_methods` | `0004_phase2_admin_finance_methods.sql` |
 
-- Six ledger tables exist with RLS enabled and SELECT-only policies.
-- Both member views have `security_invoker=true`.
-- Authenticated has SELECT-only table/view grants; anonymous has none in the inspected grant set.
-- All seven finance RPCs are security-definer functions with authenticated EXECUTE privilege and internal authorization checks.
-- The rollback-only smoke transaction passed partial payment, duplicate request rejection, reversal/double-reversal behavior, receipt voiding, closed-period rejection, due carry-forward, duplicate carry-forward rejection, overpayment/advance, advance carry-forward, and missing-profile authorization rejection.
-- Post-rollback verification found zero smoke periods and zero ledger rows; the original foundation audit count remained one.
+Observed backend checks after the final rollback smoke test:
+
+- Six ledger tables have RLS enabled and exactly one SELECT policy each for `authenticated`.
+- Both member views have `security_invoker=true` and authenticated SELECT-only grants.
+- Anonymous EXECUTE is false for all seven finance RPCs; authenticated EXECUTE is true, with internal active-Admin/mess authorization still required.
+- Live payment constraints accept `BKASH` and `NAGAD`; live charge constraints accept the expanded category set.
+- The rollback-only transaction passed partial payment, duplicate request rejection, reversal/double-reversal behavior, receipt voiding, closed-period rejection, due/advance carry-forward, duplicate carry-forward rejection, missing-profile authorization rejection, `ELECTRICITY`, `BKASH`, `NAGAD`, and future-payment rejection.
+- Post-rollback counts were zero for billing periods, charges, adjustments, payments, receipts, and reversals. Profiles `1`, Main Admin assignments `1`, and the original audit row `1` remained unchanged.
 
 `0003` is intentionally separate: live inspection showed Supabase default privileges had granted `ALL` on the new views to `authenticated`. The follow-up migration revoked those defaults and granted only SELECT. Do not omit it in a fresh setup.
 
+## Android verification result
+
+For code commit `42c196cac4e21ab1282094624b0baa922faf0c6f`, GitHub Actions run `40159571594` completed successfully:
+
+- static XML/resource/security contract checks;
+- all JVM unit tests, including Admin overview separation and finance-entry validation;
+- `assembleDebug`;
+- generated public `BuildConfig` verification;
+- debug APK artifact upload.
+
+The run verifies compilation and JVM behavior, not Android device rendering, Supabase JWT interactions, or user acceptance.
+
 ## Verification limits and next tests
 
-The smoke transaction injected `request.jwt.claims` in a project-owner SQL session and rolled back. It is useful RPC/calculation verification, but it is **not** a substitute for PostgREST tests using real anonymous, Member, Admin, suspended, and cross-mess JWTs. Those tests remain required before real financial data.
+The smoke transaction injected `request.jwt.claims` in a project-owner SQL session and rolled back. It is useful RPC/calculation verification, but it is **not** a substitute for PostgREST tests using real anonymous, Member, Admin, suspended, and cross-mess JWTs.
 
 Run the checked-in smoke script only in a disposable/test project:
 
@@ -77,4 +113,5 @@ Next required integration cases:
 3. Admin can mutate only their own mess; cross-mess target IDs are rejected.
 4. Suspended users receive no finance rows and cannot mutate.
 5. Concurrent duplicate submissions and carry-forwards preserve uniqueness.
-6. Installed Android app decodes the exact views and shows empty/loading/stale-error states correctly.
+6. Installed Android app decodes real snapshots and shows loading/error/empty/stale states correctly.
+7. Admin creates and closes periods, records charges/payments, reverses a payment, carries a balance forward, and downloads/shares both valid and reversed PDF receipts on a device.
