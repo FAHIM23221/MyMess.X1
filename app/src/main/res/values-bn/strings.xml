@@ -1,0 +1,97 @@
+<resources>
+    <string name="app_name">SMART TRANSPARENT MESS ERP</string>
+    <string name="brand_tagline">স্বচ্ছ হিসাব। সবার আস্থা।</string>
+    <string name="loading">নিরাপদ সেশন লোড হচ্ছে…</string>
+    <string name="retry">আবার চেষ্টা করুন</string>
+    <string name="back">পেছনে</string>
+    <string name="cancel">বাতিল</string>
+    <string name="close">বন্ধ</string>
+
+    <string name="config_title">সেটআপ প্রয়োজন</string>
+    <string name="config_body">এই বিল্ডে Supabase প্রজেক্ট কনফিগার করা নেই। ব্যাকএন্ড সেটআপ না হওয়া পর্যন্ত লগইন ও প্রোফাইল ব্যবহার করা যাবে না।</string>
+    <string name="config_variables">local.properties অথবা GitHub Actions Variables-এ SUPABASE_URL ও SUPABASE_PUBLISHABLE_KEY যোগ করে আবার বিল্ড করুন।</string>
+    <string name="config_security_note">এই Android অ্যাপে Supabase service_role key, ডেটাবেস পাসওয়ার্ড বা signing key দেবেন না।</string>
+
+    <string name="login_title">সাইন ইন</string>
+    <string name="admin_login_title">প্রশাসকের সাইন ইন</string>
+    <string name="login_subtitle">মেস প্রশাসকের দেওয়া অ্যাকাউন্ট ব্যবহার করুন।</string>
+    <string name="admin_login_subtitle">সক্রিয় ব্যাকএন্ড প্রোফাইল দেখে প্রশাসক প্রবেশ যাচাই করা হয়।</string>
+    <string name="admin_reauth_body">আপনি %1$s (%2$s) হিসেবে সাইন ইন আছেন। অনুমোদিত প্রশাসক অ্যাকাউন্ট দিয়ে প্রবেশ করতে সাইন আউট করুন। সুরক্ষিত তথ্য দেওয়ার আগে ব্যাকএন্ড ভূমিকা যাচাই করে।</string>
+    <string name="continue_admin_login">সাইন আউট করে এগিয়ে যান</string>
+    <string name="email_label">ইমেইল ঠিকানা</string>
+    <string name="password_label">পাসওয়ার্ড</string>
+    <string name="sign_in">সাইন ইন</string>
+    <string name="signing_in">সাইন ইন হচ্ছে…</string>
+    <string name="forgot_password">পাসওয়ার্ড ভুলে গেছেন?</string>
+    <string name="no_public_signup">অ্যাকাউন্ট তৈরি আমন্ত্রণের মাধ্যমে হয়; এই স্ক্রিনে নতুন অ্যাকাউন্ট তৈরি করা যায় না।</string>
+    <string name="admin_not_member_message">এই অ্যাকাউন্টে সক্রিয় প্রশাসক প্রবেশাধিকার নেই।</string>
+    <string name="generic_signin_error">সাইন ইন করা যায়নি। তথ্য ও সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।</string>
+    <string name="session_expired">সেশন নবায়ন করা যায়নি। আবার সাইন ইন করুন।</string>
+
+    <string name="reset_title">পাসওয়ার্ড রিসেট</string>
+    <string name="reset_subtitle">ইমেইল দিন। অ্যাকাউন্ট থাকলে Supabase পুনরুদ্ধারের নির্দেশনা পাঠাবে।</string>
+    <string name="send_recovery">পুনরুদ্ধারের ইমেইল পাঠান</string>
+    <string name="recovery_requested">এই ইমেইলে অ্যাকাউন্ট থাকলে পুনরুদ্ধারের নির্দেশনা পাঠানো হয়েছে।</string>
+    <string name="recovery_error">অনুরোধ সম্পন্ন হয়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।</string>
+    <string name="new_password_title">নতুন পাসওয়ার্ড দিন</string>
+    <string name="new_password_label">নতুন পাসওয়ার্ড</string>
+    <string name="confirm_password_label">নতুন পাসওয়ার্ড নিশ্চিত করুন</string>
+    <string name="update_password">পাসওয়ার্ড আপডেট</string>
+    <string name="password_updated">পাসওয়ার্ড আপডেট হয়েছে। অ্যাপ ব্যবহার চালিয়ে যেতে পারেন।</string>
+    <string name="password_mismatch">দুটি পাসওয়ার্ড এক নয়।</string>
+    <string name="password_too_short">কমপক্ষে ৮ অক্ষর ব্যবহার করুন।</string>
+    <string name="password_update_error">পাসওয়ার্ড আপডেট করা যায়নি। পুনরুদ্ধার লিংক আবার খুলুন বা নতুন অনুরোধ করুন।</string>
+
+    <string name="home">হোম</string>
+    <string name="profile">প্রোফাইল</string>
+    <string name="welcome_name">স্বাগতম, %1$s</string>
+    <string name="member_dashboard_title">সদস্য ড্যাশবোর্ড</string>
+    <string name="admin_dashboard_title">অ্যাডমিন ড্যাশবোর্ড</string>
+    <string name="main_admin_dashboard_title">প্রধান অ্যাডমিন ড্যাশবোর্ড</string>
+    <string name="phase_one_label">ফেজ ১ · ভিত্তি</string>
+    <string name="phase_one_member_body">আপনার নিরাপদ অ্যাকাউন্ট ও প্রোফাইল প্রস্তুত। পরবর্তী ফেজে বাস্তব তথ্য সংযুক্ত হলে অর্থ, খাবার, চাল ও দায়িত্বের রেকর্ড দেখা যাবে।</string>
+    <string name="phase_one_admin_body">ব্যাকএন্ড থেকে আপনার অ্যাডমিন ভূমিকা যাচাই করা হয়েছে। সংশ্লিষ্ট মডিউল তৈরি ও তথ্য সংযুক্ত না হওয়া পর্যন্ত কার্যক্রমের সারাংশ দেখানো হবে না।</string>
+    <string name="phase_one_main_admin_body">ব্যাকএন্ড থেকে আপনার প্রধান অ্যাডমিন ভূমিকা যাচাই করা হয়েছে। এই ফেজে অসম্পূর্ণ নিয়ন্ত্রণ দেখানো হয় না; নিরাপত্তা-সংবেদনশীল কাজ সার্ভার-নিয়ন্ত্রিত থাকবে।</string>
+    <string name="no_demo_data">এই বিল্ডে কোনো কৃত্রিম ডেমো সংখ্যা নেই।</string>
+    <string name="profile_summary">অ্যাকাউন্ট ও প্রোফাইলের তথ্য</string>
+    <string name="account_verified">ব্যাকএন্ডে সক্রিয় প্রোফাইল</string>
+    <string name="account_not_active">অ্যাকাউন্টটি সক্রিয় নয়। প্রধান অ্যাডমিনের সঙ্গে যোগাযোগ করুন।</string>
+    <string name="profile_unavailable_title">প্রবেশাধিকার নেই</string>
+    <string name="profile_unavailable_body">ব্যাকএন্ড এই অ্যাকাউন্টের জন্য সক্রিয় প্রোফাইল দেয়নি। কোনো ড্যাশবোর্ড তথ্য দেখানো হয়নি।</string>
+    <string name="profile_load_error">প্রোফাইল লোড করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।</string>
+
+    <string name="full_name_label">পূর্ণ নাম</string>
+    <string name="phone_label">ফোন নম্বর</string>
+    <string name="member_id_label">সদস্য আইডি</string>
+    <string name="room_label">রুম</string>
+    <string name="seat_label">সিট</string>
+    <string name="join_date_label">যোগদানের তারিখ</string>
+    <string name="role_label">ভূমিকা</string>
+    <string name="status_label">অ্যাকাউন্টের অবস্থা</string>
+    <string name="manager_status_label">ম্যানেজারের অবস্থা</string>
+    <string name="manager_yes">বর্তমান ম্যানেজার</string>
+    <string name="manager_no">বর্তমানে ম্যানেজার নন</string>
+    <string name="not_assigned">নির্ধারিত নয়</string>
+    <string name="not_provided">দেওয়া হয়নি</string>
+    <string name="edit_profile">অনুমোদিত তথ্য সম্পাদনা</string>
+    <string name="save_profile">প্রোফাইল সংরক্ষণ</string>
+    <string name="saving">সংরক্ষণ হচ্ছে…</string>
+    <string name="profile_saved">প্রোফাইল আপডেট হয়েছে।</string>
+    <string name="profile_save_error">প্রোফাইল সংরক্ষণ করা যায়নি। অনুমোদিত তথ্য পরীক্ষা করে আবার চেষ্টা করুন।</string>
+    <string name="name_invalid">২ থেকে ৮০ অক্ষরের মধ্যে নাম লিখুন।</string>
+    <string name="phone_invalid">সঠিক ফোন নম্বর লিখুন অথবা ফাঁকা রাখুন।</string>
+    <string name="member_role">সদস্য</string>
+    <string name="admin_role">অ্যাডমিন / ম্যানেজার</string>
+    <string name="main_admin_role">প্রধান অ্যাডমিন</string>
+    <string name="active_status">সক্রিয়</string>
+    <string name="pending_status">অপেক্ষমাণ</string>
+    <string name="suspended_status">স্থগিত</string>
+
+    <string name="app_information">অ্যাপের তথ্য</string>
+    <string name="version_format">সংস্করণ %1$s</string>
+    <string name="app_information_body">SMART TRANSPARENT MESS ERP মেসের হিসাবকে স্বচ্ছ, দায়বদ্ধ ও ব্যক্তিগত রাখতে সাহায্য করে।</string>
+    <string name="sign_out">সাইন আউট</string>
+    <string name="signing_out">সাইন আউট হচ্ছে…</string>
+    <string name="signed_out_local_only">এই ডিভাইস থেকে সাইন আউট হয়েছে। সার্ভার সেশন বাতিল নিশ্চিত করতে পারেনি।</string>
+    <string name="error_generic">সমস্যা হয়েছে। আবার চেষ্টা করুন।</string>
+</resources>
