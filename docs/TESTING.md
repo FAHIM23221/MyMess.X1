@@ -23,7 +23,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The local workspace does not provide the required Android SDK/Gradle runtime. The Phase 1 main workflow run `40153010838` did execute `testDebugUnitTest` and `assembleDebug` successfully and uploaded an unconfigured APK. Phase 2 run `40157238078` then completed the static checks, new finance JVM tests, `assembleDebug`, and artifact upload successfully at commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. The Phase 2 remote migration, grant inspection, and rollback-only SQL smoke transaction have also run; real-JWT API and installed-device tests remain open.
+The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The local workspace does not provide the required Android SDK/Gradle runtime. The Phase 1 main workflow run `40153010838` did execute `testDebugUnitTest` and `assembleDebug` successfully and uploaded an unconfigured APK. Phase 2 run `40157238078` then completed the static checks, new finance JVM tests, `assembleDebug`, and artifact upload successfully at commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. Configured run `40157837474` additionally passed generated-`BuildConfig` verification and uploaded artifact `12585247757`. The Phase 2 remote migration, grant inspection, and rollback-only SQL smoke transaction have also run; real-JWT API and installed-device tests remain open.
 
 ## Supabase integration test matrix before real data
 

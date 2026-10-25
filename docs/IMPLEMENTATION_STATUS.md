@@ -35,7 +35,7 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 | Payments, unique client request IDs, receipts | **READY_FOR_TESTING** | Payment/receipt/audit path and duplicate-request rejection passed rollback smoke checks; no Admin entry UI yet. |
 | Reversal/correction history | **READY_FOR_TESTING** | Reversal, double-reversal rejection, receipt voiding, and valid-payment exclusion passed rollback smoke checks. |
 | Carry-forward | **READY_FOR_TESTING** | Due and advance carry-forward plus duplicate rejection passed; no financial rows persisted by the test. |
-| Member finance dashboard | **READY_FOR_TESTING** | Compiled successfully in run `40157238078`; real backend views and empty states only. Installed configured-app verification remains blocked. |
+| Member finance dashboard | **READY_FOR_TESTING** | Compiled in run `40157238078`; configured artifact `12585247757` is ready for installation. Real backend views and empty states only; device verification is pending. |
 | Admin finance entry UI | **DEFERRED** | Backend RPCs are being established first; the UI must not be marked complete before it exists. |
 
 ## Delivery blockers
@@ -47,11 +47,12 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 - Current effect: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` were **not written** to Actions Variables. The denied API has not been retried.
 - Independent resolution: the same non-privileged Android URL/publishable key is now intentionally bundled in `config/supabase.public.properties`; blank Variables fall back to it. Variables permission repair is optional for future overrides and no longer blocks a configured debug APK.
 
-### IN_PROGRESS — configured installable APK
+### READY_FOR_TESTING — configured debug APK installation
 
 - The screenshot-supplied older artifact was correctly identified as unconfigured: it lacked public Supabase configuration.
-- Bundled public configuration, blank-Variable fallback, and a generated-`BuildConfig` CI verification step are now in source. A new workflow and artifact inspection are pending.
-- Delivery requires a new successful workflow followed by installation of that new artifact. No installation or device verification is claimed yet.
+- Run `40157837474` passed static checks, JVM tests, `assembleDebug`, generated-`BuildConfig` verification, and artifact upload for commit `e01ffb7d8a11d8c7a0117c36606ad07af04213f8`.
+- Artifact `12585247757` is 21,705,649 bytes, version `0.2.1-phase2` / versionCode `3`, and expires `2026-11-08T03:21:48Z`. This artifact contains the public Supabase configuration; no privileged key was added.
+- GitHub artifact metadata and upload are verified. A sandbox download attempt hit the known signed-blob `EOF`, so no local APK checksum/device installation is claimed. The user should download the new artifact from GitHub and install it; the old Setup-required APK must not be reused.
 
 ## Immediate verification queue
 
@@ -60,5 +61,6 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 3. **COMPLETE:** Rollback-only smoke script passed; post-rollback smoke periods and ledger rows are both zero. See `docs/PHASE2_FINANCE.md` and `supabase/tests/phase2_smoke_transaction.sql`.
 4. **COMPLETE:** Run `40157238078` passed static checks, JVM tests, `assembleDebug`, and artifact upload for commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. Artifact ID `12585146867` is 21,705,454 bytes and expires `2026-11-08T03:11:52Z`; it is unconfigured because Variables remain blocked.
 5. **READY_FOR_TESTING:** Exercise real anonymous/Member/Admin/suspended/cross-mess JWTs before real financial data.
-6. **IN_PROGRESS:** Build and inspect a publicly configured debug APK without relying on the denied Variables API; then provide the new artifact for installation.
-7. **DEFERRED:** Continue Admin finance entry UI and then Phase 3.
+6. **COMPLETE:** Configured run `40157837474` passed generated-`BuildConfig` verification and uploaded artifact `12585247757` without relying on Actions Variables.
+7. **READY_FOR_TESTING:** Install the new artifact on the Android phone, sign in with the confirmed Main Admin account, and verify profile/finance empty states. Installation itself has not been performed by the agent.
+8. **DEFERRED:** Continue Admin finance entry UI and then Phase 3.
