@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small dependency-free static checks for the Phase 1 project bundle."""
+"""Dependency-free static checks for the Android and Supabase project bundle."""
 from __future__ import annotations
 
 import re
@@ -91,6 +91,47 @@ for fragment in (
 update_policy = sql.split("create policy profiles_update_permitted_fields", maxsplit=1)[-1].split(";", maxsplit=1)[0]
 require("user_id = auth.uid()" in update_policy, "Profile update policy must be restricted to the authenticated user's own row")
 require("is_admin_for_mess" not in update_policy, "Direct profile updates must not let Admin change other users without an audited RPC")
+
+phase2_sql = read("supabase/migrations/0002_phase2_billing_payments.sql").lower()
+for fragment in (
+    "create table public.billing_periods",
+    "create table public.charges",
+    "create table public.billing_adjustments",
+    "create table public.payments",
+    "create table public.receipts",
+    "create table public.payment_reversals",
+    "alter table public.payments enable row level security",
+    "alter table public.receipts enable row level security",
+    "alter table public.payment_reversals enable row level security",
+    "create view public.my_financial_summary",
+    "create view public.my_payment_receipts",
+    "security_invoker = true",
+    "create or replace function public.record_payment(",
+    "create or replace function public.reverse_payment(",
+    "create or replace function public.carry_forward_balance(",
+    "unique (mess_id, client_request_id)",
+    "one_carry_forward_per_member_period",
+):
+    require(fragment in phase2_sql, f"Phase 2 SQL contract missing: {fragment}")
+require("disable row level security" not in phase2_sql, "Phase 2 must never disable RLS")
+require(phase2_sql.count("amount_minor bigint") >= 4, "Ledger amounts must use integer minor units")
+require("double precision" not in phase2_sql and "real," not in phase2_sql, "Ledger must not use floating-point money")
+
+view_grants_sql = read("supabase/migrations/0003_phase2_view_grants.sql").lower()
+for view_name in ("my_financial_summary", "my_payment_receipts"):
+    require(
+        f"revoke all on public.{view_name} from public, anon, authenticated" in view_grants_sql,
+        f"View default privileges must be revoked for {view_name}",
+    )
+    require(
+        f"grant select on public.{view_name} to authenticated" in view_grants_sql,
+        f"View must be SELECT-only for {view_name}",
+    )
+
+smoke_sql = read("supabase/tests/phase2_smoke_transaction.sql").lower()
+require("begin;" in smoke_sql and "rollback;" in smoke_sql, "Phase 2 smoke test must be rollback-only")
+require("duplicate payment request id was accepted" in smoke_sql, "Smoke test must cover duplicate payments")
+require("advance-credit carry-forward failed" in smoke_sql, "Smoke test must cover advance carry-forward")
 
 profile_dto = read("app/src/main/java/com/smarttransparentmess/erp/data/profile/ProfileDto.kt")
 update_dto = profile_dto.split("data class ProfileUpdateDto(", maxsplit=1)[-1]

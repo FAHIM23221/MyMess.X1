@@ -1,4 +1,4 @@
-# Supabase setup — Phase 1
+# Supabase setup — Phases 1–2
 
 This guide is for a new Supabase project. The project source contains no backend credentials. The user must create and configure their own Supabase project before the app can authenticate.
 
@@ -17,9 +17,13 @@ This guide is for a new Supabase project. The project source contains no backend
 
 ## 2. Apply the database migration
 
-Open **SQL Editor** in the Supabase Dashboard, paste the complete file `supabase/migrations/0001_phase1_foundation.sql`, review it, and run it once. It creates the Phase 1 schema, constraints, RLS policies, helper functions, and protected RPCs.
+For a fresh project, open **SQL Editor**, review each complete file, and apply them once in this order:
 
-The migration is intended for a new project and has not been executed in this workspace. If applying it fails, stop and review the error rather than partially editing tables or disabling RLS. Do not apply it repeatedly as a substitute for fixing a failed migration; policy creation is intentionally not an upsert operation.
+1. `supabase/migrations/0001_phase1_foundation.sql` — schema, constraints, RLS, helpers, and protected profile/Main Admin RPCs.
+2. `supabase/migrations/0002_phase2_billing_payments.sql` — additive finance ledger, member views, and audited finance RPCs.
+3. `supabase/migrations/0003_phase2_view_grants.sql` — required SELECT-only tightening for Supabase's default view grants.
+
+These migrations are intended for a new project. On the active new project, all three were applied and inspected on 2026-10-25; do not apply them again there. If a fresh application fails, stop and review the error rather than partially editing tables or disabling RLS. Do not rerun policy/table creation as a substitute for fixing a failed migration.
 
 ## 3. Bootstrap exactly one Main Admin
 
@@ -58,7 +62,8 @@ If the variables are left blank, the project still builds but the app shows **Se
 
 - Public signup and member invitation screens are not present.
 - The database RPC `provision_member_profile` links an already-created, email-confirmed Auth user to an active Member profile when called by the active Main Admin. It is not yet wired to an Android management screen.
-- `set_profile_role`, `set_profile_status`, and `transfer_main_admin` are likewise server-side functions only; there is no Phase 1 role-management UI.
-- Test with separate Member, Admin, Main Admin, suspended, and anonymous identities before storing any real member data.
+- `set_profile_role`, `set_profile_status`, and `transfer_main_admin` are likewise server-side functions only; there is no role-management UI yet.
+- Phase 2 finance RPCs are applied and smoke-tested, but Admin finance entry UI is deferred. The member dashboard is read-only.
+- Test with separate Member, Admin, Main Admin, suspended, cross-mess, and anonymous identities before storing any real member or financial data.
 
 See [`SECURITY.md`](SECURITY.md) for the current open security verification items and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the authorization model.

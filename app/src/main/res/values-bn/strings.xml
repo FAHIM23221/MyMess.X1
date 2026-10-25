@@ -87,6 +87,37 @@
     <string name="pending_status">অপেক্ষমাণ</string>
     <string name="suspended_status">স্থগিত</string>
 
+    <string name="phase_two_dashboard_body">নিচের বিল ও পেমেন্টের সংখ্যা সুরক্ষিত ব্যাকএন্ড লেজার থেকে আসছে। কোনো নমুনা ব্যালান্স যোগ করা হয়নি।</string>
+    <string name="finance_title">আমার অর্থের হিসাব</string>
+    <string name="finance_loading">আপনার বিলিং সময় ও পেমেন্ট রসিদ লোড হচ্ছে…</string>
+    <string name="finance_error">আর্থিক রেকর্ড refresh করা যায়নি। পুরোনো মান দেখা গেলে তা হালনাগাদ নাও হতে পারে।</string>
+    <string name="finance_no_period_title">এখনো বিলিং সময় নেই</string>
+    <string name="finance_no_period_body">প্রশাসক এখনো বিলিং সময় শুরু করেননি। কোনো আর্থিক সংখ্যা পাওয়া যায়নি।</string>
+    <string name="finance_period_range">%1$s থেকে %2$s</string>
+    <string name="finance_due">বকেয়া</string>
+    <string name="finance_advance">অগ্রিম জমা</string>
+    <string name="finance_settled">মীমাংসিত ব্যালান্স</string>
+    <string name="finance_charges">চার্জ</string>
+    <string name="finance_valid_payments">বৈধ পেমেন্ট</string>
+    <string name="finance_opening_due">পূর্বের বকেয়া</string>
+    <string name="finance_debit_adjustments">ডেবিট সমন্বয়</string>
+    <string name="finance_credit_adjustments">ক্রেডিট সমন্বয়</string>
+    <string name="finance_recent_payments">সাম্প্রতিক পেমেন্ট রসিদ</string>
+    <string name="finance_no_payments_title">কোনো পেমেন্ট রেকর্ড নেই</string>
+    <string name="finance_no_payments_body">প্রশাসক পেমেন্ট রেকর্ড করলে আপনার যাচাইযোগ্য রসিদ এখানে দেখা যাবে।</string>
+    <string name="finance_receipt_format">রসিদ %1$s</string>
+    <string name="finance_reversed">বাতিলকৃত</string>
+    <string name="finance_valid">বৈধ</string>
+    <string name="finance_reversal_reason">বাতিলের কারণ: %1$s</string>
+    <string name="finance_transaction_ref">রেফারেন্স: %1$s</string>
+    <string name="finance_period_open">চলমান সময়</string>
+    <string name="finance_period_closed">সমাপ্ত সময়</string>
+    <string name="payment_method_cash">নগদ</string>
+    <string name="payment_method_bank">ব্যাংক</string>
+    <string name="payment_method_mobile_banking">মোবাইল ব্যাংকিং</string>
+    <string name="payment_method_other">অন্য মাধ্যম</string>
+    <string name="bdt_amount">৳%1$s</string>
+
     <string name="app_information">অ্যাপের তথ্য</string>
     <string name="version_format">সংস্করণ %1$s</string>
     <string name="app_information_body">SMART TRANSPARENT MESS ERP মেসের হিসাবকে স্বচ্ছ, দায়বদ্ধ ও ব্যক্তিগত রাখতে সাহায্য করে।</string>

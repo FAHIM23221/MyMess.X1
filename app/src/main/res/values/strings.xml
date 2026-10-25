@@ -87,6 +87,37 @@
     <string name="pending_status">Pending</string>
     <string name="suspended_status">Suspended</string>
 
+    <string name="phase_two_dashboard_body">Your billing and payment figures below come from the protected backend ledger. No sample balances are inserted.</string>
+    <string name="finance_title">My finances</string>
+    <string name="finance_loading">Loading your billing periods and payment receipts…</string>
+    <string name="finance_error">Financial records could not be refreshed. Existing values, if shown, may be out of date.</string>
+    <string name="finance_no_period_title">No billing period yet</string>
+    <string name="finance_no_period_body">An administrator has not opened a billing period. No financial figures are available.</string>
+    <string name="finance_period_range">%1$s to %2$s</string>
+    <string name="finance_due">Outstanding due</string>
+    <string name="finance_advance">Advance credit</string>
+    <string name="finance_settled">Settled balance</string>
+    <string name="finance_charges">Charges</string>
+    <string name="finance_valid_payments">Valid payments</string>
+    <string name="finance_opening_due">Opening due</string>
+    <string name="finance_debit_adjustments">Debit adjustments</string>
+    <string name="finance_credit_adjustments">Credit adjustments</string>
+    <string name="finance_recent_payments">Recent payment receipts</string>
+    <string name="finance_no_payments_title">No payments recorded</string>
+    <string name="finance_no_payments_body">Your verified payment receipts will appear here after an administrator records them.</string>
+    <string name="finance_receipt_format">Receipt %1$s</string>
+    <string name="finance_reversed">Reversed</string>
+    <string name="finance_valid">Valid</string>
+    <string name="finance_reversal_reason">Reversal reason: %1$s</string>
+    <string name="finance_transaction_ref">Reference: %1$s</string>
+    <string name="finance_period_open">Open period</string>
+    <string name="finance_period_closed">Closed period</string>
+    <string name="payment_method_cash">Cash</string>
+    <string name="payment_method_bank">Bank</string>
+    <string name="payment_method_mobile_banking">Mobile banking</string>
+    <string name="payment_method_other">Other method</string>
+    <string name="bdt_amount">৳%1$s</string>
+
     <string name="app_information">App information</string>
     <string name="version_format">Version %1$s</string>
     <string name="app_information_body">SMART TRANSPARENT MESS ERP keeps mess records clear, accountable, and private.</string>

@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smarttransparentmess.erp.presentation.AuthViewModel
+import com.smarttransparentmess.erp.presentation.FinanceViewModel
 import com.smarttransparentmess.erp.ui.SmartMessApp
 import com.smarttransparentmess.erp.ui.theme.SmartMessTheme
 
@@ -26,9 +27,15 @@ class MainActivity : ComponentActivity() {
                     onPasswordRecoveryComplete = appContainer::markPasswordRecoveryComplete,
                 ),
             )
+            val financeViewModel: FinanceViewModel = viewModel(
+                factory = FinanceViewModel.Factory(
+                    repository = appContainer.financeRepository,
+                ),
+            )
             SmartMessTheme {
                 SmartMessApp(
                     viewModel = authViewModel,
+                    financeViewModel = financeViewModel,
                     versionName = BuildConfig.VERSION_NAME,
                 )
             }

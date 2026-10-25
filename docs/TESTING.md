@@ -6,6 +6,10 @@
 - `AppRoleTest.kt`: case-insensitive role parsing and fail-closed unknown roles.
 - `ProfileDtoTest.kt`: profile mapping, nullable fields, and rejection of an unknown role.
 - `SupabaseConfigTest.kt`: HTTPS requirement and project URL normalization.
+- `MoneyTest.kt`: exact BDT minor-unit parsing/formatting, excess precision, invalid input, and full `Long` formatting boundaries.
+- `FinanceModelsTest.kt`: opening due, partial payment, overpayment/advance, credit offset, reversal visibility, and overflow rejection.
+- `FinanceDtosTest.kt`: exact backend/domain balance consistency, unknown enum rejection, and payment/receipt mapping.
+- `supabase/tests/phase2_smoke_transaction.sql`: rollback-only RPC, duplicate, reversal, closed-period, due/advance carry-forward, and authorization smoke coverage.
 - `scripts/verify_project.py`: dependency-free XML/resource checks, English/Bengali key/placeholder parity, selected SQL authorization invariants, workflow presence, and build-time privileged-key guard.
 - `.github/workflows/android-debug.yml`: runs the static checks, `testDebugUnitTest`, and `assembleDebug`, then uploads only the debug APK artifact.
 
@@ -17,7 +21,7 @@ python3 scripts/verify_project.py
 ./gradlew assembleDebug
 ```
 
-The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The Gradle test/build commands have not been run in the workspace: it has Java 11 but no Gradle distribution or Android SDK. GitHub Actions is configured but has not yet run. No APK or test result is claimed.
+The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The local workspace does not provide the required Android SDK/Gradle runtime. The Phase 1 main workflow run `40153010838` did execute `testDebugUnitTest` and `assembleDebug` successfully and uploaded an unconfigured APK. The Phase 2 branch requires a new workflow result before its JVM tests/build/APK are claimed. The Phase 2 remote migration, grant inspection, and rollback-only SQL smoke transaction have run; real-JWT API and installed-device tests remain open.
 
 ## Supabase integration test matrix before real data
 
@@ -43,5 +47,13 @@ Use separate test Auth accounts and a disposable project. Test both allowed and 
 | Owner-only recovery uses verified approval and valid active target | Assignment transfers atomically, old account is suspended, and a `PROJECT_OWNER_RECOVERY` audit entry is written |
 | New mess is committed without an active Main Admin assignment | Transaction rejected by deferred constraint trigger |
 | Suspended user signs in or calls a protected RPC | No dashboard/protected data; operation denied |
+| Anonymous/Member selects finance tables or views | Anonymous denied; Member only own summary/receipts |
+| Member calls any finance mutation RPC | Permission denied; no ledger/audit mutation |
+| Admin records a duplicate payment request ID | Unique violation; no duplicate payment/receipt |
+| Admin reverses a payment twice | First adds reversal and voids receipt; second rejected |
+| Charge/payment/adjustment targets a closed period | Rejected; closed ledger remains unchanged |
+| Carry-forward is repeated for the same member/source/target | Rejected by the partial unique index |
+| Payment exceeds charges/opening due | Advance credit, not a negative outstanding due |
+| Admin targets another mess or suspended identity calls RPC | Rejected by server-side active same-mess checks |
 
-Also test password recovery redirect, PKCE callback, refresh after process restart, local and remote sign-out, and logs after a deliberately invalid Auth request. See `SECURITY.md` for the unresolved token-log verification.
+Also test password recovery redirect, PKCE callback, refresh after process restart, local and remote sign-out, and logs after a deliberately invalid Auth request. See `SECURITY.md` for the unresolved token-log verification and `PHASE2_FINANCE.md` for the executed rollback-only smoke scope.

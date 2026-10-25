@@ -1,4 +1,4 @@
-# Architecture — Phase 1
+# Architecture — Phases 1–2
 
 ## Scope and data flow
 
@@ -6,10 +6,10 @@
 Jetpack Compose screens
         │ user actions / StateFlow state
         ▼
-AuthViewModel ── validates input and gates UI states
+AuthViewModel / FinanceViewModel ── validate input and gate UI states
         │                     │
         ▼                     ▼
-SupabaseAuthRepository   SupabaseMemberProfileRepository
+SupabaseAuthRepository   SupabaseMemberProfileRepository / SupabaseFinanceRepository
         │                     │
         └── supabase-kt Auth / PostgREST client ── HTTPS ── Supabase
                                                               │
@@ -42,13 +42,15 @@ The one-mess Phase 1 schema uses a singleton assignment row. A deferred constrai
 
 For a lost/compromised Main Admin, the separate `recover_main_admin_owner_only` database function is not exposed to any PostgREST role, including `service_role`. Its SQL template requires an expected old user ID, an active confirmed same-mess target, a reason, and an external approval reference. It transfers the singleton assignment, suspends the old account, and records a `PROJECT_OWNER_RECOVERY` audit actor. It is an operator recovery path, not an app feature, and still requires independent review and integration testing.
 
-## Phase 1 data surface
+## Phase 1–2 data surface
 
-The initial migration defines `messes`, `profiles`, `main_admin_assignments`, and `audit_logs`, plus helper functions and `my_profile`. Authenticated clients receive narrow table grants: profile update is limited to `full_name` and `phone_number`; role, status, manager flag, and Main Admin assignment are not client-writable. There are deliberately no payment, meal, stock, balance, or report tables in Phase 1.
+The initial migration defines `messes`, `profiles`, `main_admin_assignments`, and `audit_logs`, plus helper functions and `my_profile`. Authenticated clients receive narrow table grants: profile update is limited to `full_name` and `phone_number`; role, status, manager flag, and Main Admin assignment are not client-writable.
+
+Phase 2 adds `billing_periods`, `charges`, `billing_adjustments`, `payments`, `receipts`, and `payment_reversals`. Authenticated clients receive SELECT-only ledger/view grants. Mutations go through active same-mess Admin/Main Admin RPCs, which write audit entries. `FinanceViewModel` loads `my_financial_summary` and `my_payment_receipts`; both are `security_invoker` views restricted by `auth.uid()` and underlying RLS. The member UI computes and cross-checks due/advance using integer minor units. The SQL formula and verification limits are in [`PHASE2_FINANCE.md`](PHASE2_FINANCE.md).
 
 ## Open integration work
 
-- Apply the SQL to a new Supabase project and confirm the RLS/function behavior using two real test users and database tests.
-- Configure email delivery, redirect URLs, and Auth users.
-- Add any future Admin management UI only after reviewing the RPC behavior and authorization tests.
-- Build and test through GitHub Actions or a configured Android SDK; this workspace had no Android SDK or Gradle distribution available.
+- Exercise PostgREST with real anonymous, Member, Admin, suspended, and cross-mess JWTs; the owner-session rollback smoke test is not enough.
+- Configure and test email delivery and installed-app Auth deep links on a device.
+- Add Admin finance entry UI only after reviewing RPC behavior and authorization tests.
+- Run the Phase 2 JVM tests/build in a new GitHub Actions workflow and install only the resulting artifact for device verification.

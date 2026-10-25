@@ -32,6 +32,8 @@ import com.smarttransparentmess.erp.R
 import com.smarttransparentmess.erp.domain.model.MemberProfile
 import com.smarttransparentmess.erp.presentation.AppUiState
 import com.smarttransparentmess.erp.presentation.AuthViewModel
+import com.smarttransparentmess.erp.presentation.FinanceUiState
+import com.smarttransparentmess.erp.presentation.FinanceViewModel
 import com.smarttransparentmess.erp.ui.auth.AccessUnavailableScreen
 import com.smarttransparentmess.erp.ui.auth.AdminReauthScreen
 import com.smarttransparentmess.erp.ui.auth.LoginScreen
@@ -45,9 +47,11 @@ import com.smarttransparentmess.erp.ui.profile.ProfileScreen
 @Composable
 fun SmartMessApp(
     viewModel: AuthViewModel,
+    financeViewModel: FinanceViewModel,
     versionName: String,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val financeUiState by financeViewModel.uiState.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val recoveryPending by viewModel.recoveryPending.collectAsState()
@@ -70,6 +74,13 @@ fun SmartMessApp(
                     adminCredentialsSubmitted = false
                 }
             }
+        }
+    }
+
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is AppUiState.Authorized -> financeViewModel.loadForUser(state.profile.userId)
+            else -> financeViewModel.clear()
         }
     }
 
@@ -139,10 +150,12 @@ fun SmartMessApp(
             } else {
                 AuthorizedShell(
                     profile = state.profile,
+                    financeState = financeUiState,
                     selectedTab = selectedTab,
                     isBusy = isBusy,
                     notice = notice,
                     onTabSelected = { selectedTab = it },
+                    onRetryFinance = financeViewModel::refresh,
                     onSaveProfile = viewModel::saveProfile,
                     onOpenAppInformation = { route = LocalRoute.APP_INFORMATION },
                     onSignOut = viewModel::signOut,
@@ -188,10 +201,12 @@ private fun ConfigurationScreen() {
 @Composable
 private fun AuthorizedShell(
     profile: MemberProfile,
+    financeState: FinanceUiState,
     selectedTab: Int,
     isBusy: Boolean,
     notice: com.smarttransparentmess.erp.presentation.AuthNotice?,
     onTabSelected: (Int) -> Unit,
+    onRetryFinance: () -> Unit,
     onSaveProfile: (String, String) -> Unit,
     onOpenAppInformation: () -> Unit,
     onSignOut: () -> Unit,
@@ -218,9 +233,11 @@ private fun AuthorizedShell(
         if (selectedTab == 0) {
             DashboardScreen(
                 profile = profile,
+                financeState = financeState,
                 modifier = Modifier.padding(contentPadding),
                 notice = notice,
                 onOpenProfile = { onTabSelected(1) },
+                onRetryFinance = onRetryFinance,
                 onSignOut = onSignOut,
                 onClearNotice = onClearNotice,
             )
