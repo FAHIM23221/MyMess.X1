@@ -128,6 +128,17 @@ for view_name in ("my_financial_summary", "my_payment_receipts"):
         f"View must be SELECT-only for {view_name}",
     )
 
+admin_finance_sql = read("supabase/migrations/0004_phase2_admin_finance_methods.sql").lower()
+for fragment in (
+    "'cash', 'bkash', 'nagad', 'bank', 'mobile_banking', 'other'",
+    "'seat_rent', 'meal_charge', 'electricity', 'wifi', 'gas', 'water'",
+    "target_paid_at > now() + interval '5 minutes'",
+    "revoke all on function public.create_charge(uuid, uuid, text, bigint, text, date, uuid) from public, anon",
+    "revoke all on function public.record_payment(uuid, uuid, bigint, text, timestamptz, text, text, uuid) from public, anon",
+):
+    require(fragment in admin_finance_sql, f"Admin finance SQL contract missing: {fragment}")
+require("disable row level security" not in admin_finance_sql, "Admin finance migration must never disable RLS")
+
 smoke_sql = read("supabase/tests/phase2_smoke_transaction.sql").lower()
 require("begin;" in smoke_sql and "rollback;" in smoke_sql, "Phase 2 smoke test must be rollback-only")
 require("duplicate payment request id was accepted" in smoke_sql, "Smoke test must cover duplicate payments")
@@ -163,6 +174,20 @@ manifest = read("app/src/main/AndroidManifest.xml")
 require("LogLevel.NONE" in client_provider, "Supabase SDK logging should remain disabled pending token-log verification")
 require("AndroidEncryptedAuthStorage" in client_provider, "Supabase Auth must use encrypted session storage")
 require('android:allowBackup="false"' in manifest, "Android backup must remain disabled for encrypted session data")
+require('android:name="androidx.core.content.FileProvider"' in manifest, "Receipt sharing must use a non-exported FileProvider")
+require('android:exported="false"' in manifest, "Android providers must not be exported")
+file_paths = read("app/src/main/res/xml/file_paths.xml")
+require('<cache-path' in file_paths and 'path="receipts/"' in file_paths, "FileProvider must expose only generated receipt cache files")
+app_shell = read("app/src/main/java/com/smarttransparentmess/erp/ui/SmartMessApp.kt")
+require("AdminFinanceScreen" in app_shell and "canManageFinance" in app_shell, "Role-gated Admin finance navigation is missing")
+receipt_document = read("app/src/main/java/com/smarttransparentmess/erp/core/receipt/ReceiptDocument.kt")
+require("record.payment.receiptId" in receipt_document, "PDF receipts must include the immutable receipt record ID")
+require("receiptHash" not in receipt_document, "Do not claim a receipt hash that the backend does not provide")
+for test_path in (
+    "app/src/test/java/com/smarttransparentmess/erp/domain/finance/AdminFinanceCalculatorTest.kt",
+    "app/src/test/java/com/smarttransparentmess/erp/domain/validation/FinanceEntryValidatorTest.kt",
+):
+    require((ROOT / test_path).is_file(), f"Required Admin finance JVM test is missing: {test_path}")
 
 workflow = read(".github/workflows/android-debug.yml")
 require("assembleDebug" in workflow and "testDebugUnitTest" in workflow, "Workflow must test and build a debug APK")

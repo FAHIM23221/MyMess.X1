@@ -66,7 +66,7 @@ fun <T> SelectionField(
     onSelected: (T) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    emptyText: String,
+    emptyText: String = label,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {

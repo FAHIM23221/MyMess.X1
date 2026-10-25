@@ -229,7 +229,7 @@ fun AdminPaymentSection(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { viewModel.reversePayment(target.payment.id, reversalReason) },
+                    onClick = { viewModel.reversePayment(target.payment.paymentId, reversalReason) },
                     enabled = !state.isSubmitting,
                 ) { Text(stringResource(R.string.confirm)) }
             },
