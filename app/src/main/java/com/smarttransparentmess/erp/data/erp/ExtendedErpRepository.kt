@@ -143,6 +143,78 @@ class SupabaseExtendedErpRepository(
                 "mark_notification_read",
                 buildJsonObject { put("target_notification_id", JsonPrimitive(fields.getValue("notification_id"))) },
             )
+            ErpAction.CREATE_DUTY -> client.postgrest.rpc(
+                "create_duty",
+                buildJsonObject {
+                    put("target_user_id", JsonPrimitive(fields.getValue("assigned_to")))
+                    put("target_title", JsonPrimitive(fields.getValue("title")))
+                    put("target_description", JsonPrimitive(fields.getValue("description")))
+                    put("target_due_on", JsonPrimitive(fields.getValue("due_on")))
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
+            ErpAction.UPDATE_DUTY_STATUS -> client.postgrest.rpc(
+                "update_duty_status",
+                buildJsonObject {
+                    put("target_duty_id", JsonPrimitive(fields.getValue("duty_id")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    putNullable("target_note", fields["note"])
+                },
+            )
+            ErpAction.REQUEST_DUTY_CHANGE -> client.postgrest.rpc(
+                "request_duty_change",
+                buildJsonObject {
+                    put("target_duty_id", JsonPrimitive(fields.getValue("duty_id")))
+                    put("target_kind", JsonPrimitive(fields.getValue("kind")))
+                    putNullable("target_member_id", fields["target_member_id"])
+                    put("target_reason", JsonPrimitive(fields.getValue("reason")))
+                },
+            )
+            ErpAction.REVIEW_DUTY_REQUEST -> client.postgrest.rpc(
+                "review_duty_request",
+                buildJsonObject {
+                    put("target_request_id", JsonPrimitive(fields.getValue("request_id")))
+                    put("target_decision", JsonPrimitive(fields.getValue("decision")))
+                    putNullable("target_reason", fields["reason"])
+                },
+            )
+            ErpAction.SCHEDULE_MANAGER_ROTATION -> client.postgrest.rpc(
+                "schedule_manager_rotation",
+                buildJsonObject {
+                    put("target_manager_id", JsonPrimitive(fields.getValue("manager_id")))
+                    put("target_start", JsonPrimitive(fields.getValue("starts_on")))
+                    putNullable("target_end", fields["ends_on"])
+                    putNullable("target_handover_note", fields["handover_note"])
+                },
+            )
+            ErpAction.ACTIVATE_MANAGER_ROTATION -> client.postgrest.rpc(
+                "activate_manager_rotation",
+                buildJsonObject { put("target_rotation_id", JsonPrimitive(fields.getValue("rotation_id"))) },
+            )
+            ErpAction.SAVE_NOTICE -> client.postgrest.rpc(
+                "save_notice",
+                buildJsonObject {
+                    put("target_title", JsonPrimitive(fields.getValue("title")))
+                    put("target_body", JsonPrimitive(fields.getValue("body")))
+                    put("target_audience", JsonPrimitive(fields.getValue("audience")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    putNullable("target_publish_at", fields["publish_at"])
+                    putNullable("target_expires_at", fields["expires_at"])
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
+            ErpAction.SET_NOTICE_STATUS -> client.postgrest.rpc(
+                "set_notice_status",
+                buildJsonObject {
+                    put("target_notice_id", JsonPrimitive(fields.getValue("notice_id")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                },
+            )
+            ErpAction.PUBLISH_DUE_NOTICES -> client.postgrest.rpc("publish_due_notices")
+            ErpAction.MARK_NOTICE_READ -> client.postgrest.rpc(
+                "mark_notice_read",
+                buildJsonObject { put("target_notice_id", JsonPrimitive(fields.getValue("notice_id"))) },
+            )
         }
     }
 

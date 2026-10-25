@@ -95,6 +95,7 @@ fun ExtendedErpScreen(
                 TabRow(selectedTabIndex = selectedTab) {
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.extended_billing_tab)) })
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.extended_operations_tab)) })
+                    Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text(stringResource(R.string.extended_duties_tab)) })
                 }
                 when (selectedTab) {
                     0 -> BillingWorkspace(
@@ -107,7 +108,18 @@ fun ExtendedErpScreen(
                             activeAction = action
                         },
                     )
-                    else -> OperationsWorkspace(
+                    1 -> OperationsWorkspace(
+                        snapshot = snapshot,
+                        isAdmin = isAdmin,
+                        currentUserId = currentUserId,
+                        isSubmitting = state.isSubmitting,
+                        onAction = { action, values ->
+                            viewModel.clearFeedback()
+                            prefill = values
+                            activeAction = action
+                        },
+                    )
+                    else -> DutiesWorkspace(
                         snapshot = snapshot,
                         isAdmin = isAdmin,
                         currentUserId = currentUserId,
@@ -235,6 +247,77 @@ private fun PaymentReviewCard(payment: ErpRecord, isAdmin: Boolean, enabled: Boo
                     Text(stringResource(R.string.extended_review_payment))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DutiesWorkspace(
+    snapshot: ExtendedErpSnapshot,
+    isAdmin: Boolean,
+    currentUserId: String,
+    isSubmitting: Boolean,
+    onAction: (ErpAction, Map<String, String>) -> Unit,
+) {
+    FormCard(title = stringResource(R.string.extended_duties), subtitle = stringResource(R.string.extended_duties_body)) {
+        if (isAdmin) PrimaryActionButton(stringResource(R.string.extended_create_duty), { onAction(ErpAction.CREATE_DUTY, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.duties.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.duties.forEach { record ->
+            ErpRecordCard(record, listOf("title", "assignee_name", "due_on", "status", "description", "completion_note"))
+            if (record.status == "ASSIGNED") {
+                if (isAdmin || record.text("assigned_to") == currentUserId) {
+                    OutlinedButton(onClick = { onAction(ErpAction.UPDATE_DUTY_STATUS, mapOf("duty_id" to record.id)) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.extended_update_duty))
+                    }
+                }
+                if (record.text("assigned_to") == currentUserId) {
+                    OutlinedButton(onClick = { onAction(ErpAction.REQUEST_DUTY_CHANGE, mapOf("duty_id" to record.id)) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.extended_request_duty_change))
+                    }
+                }
+            }
+        }
+    }
+    FormCard(title = stringResource(R.string.extended_duty_requests)) {
+        if (isAdmin) PrimaryActionButton(stringResource(R.string.extended_review_duty_request), { onAction(ErpAction.REVIEW_DUTY_REQUEST, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.dutyRequests.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.dutyRequests.forEach { record ->
+            ErpRecordCard(
+                record = record,
+                fields = listOf("duty_title", "requester_name", "kind", "target_name", "reason", "status", "decision_reason"),
+                actionLabel = if (isAdmin && record.status == "PENDING") stringResource(R.string.extended_review_duty_request) else null,
+                onAction = { onAction(ErpAction.REVIEW_DUTY_REQUEST, mapOf("request_id" to record.id)) },
+            )
+        }
+    }
+    FormCard(title = stringResource(R.string.extended_rotations)) {
+        if (isAdmin) PrimaryActionButton(stringResource(R.string.extended_schedule_rotation), { onAction(ErpAction.SCHEDULE_MANAGER_ROTATION, emptyMap()) }, enabled = !isSubmitting)
+        if (snapshot.managerRotations.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.managerRotations.forEach { record ->
+            ErpRecordCard(
+                record = record,
+                fields = listOf("manager_name", "starts_on", "ends_on", "status", "handover_note"),
+                actionLabel = if (isAdmin && record.status == "SCHEDULED") stringResource(R.string.extended_activate_rotation) else null,
+                onAction = { onAction(ErpAction.ACTIVATE_MANAGER_ROTATION, mapOf("rotation_id" to record.id)) },
+            )
+        }
+    }
+    FormCard(title = stringResource(R.string.extended_notices), subtitle = stringResource(R.string.extended_notices_body)) {
+        if (isAdmin) {
+            PrimaryActionButton(stringResource(R.string.extended_create_notice), { onAction(ErpAction.SAVE_NOTICE, emptyMap()) }, enabled = !isSubmitting)
+            PrimaryActionButton(stringResource(R.string.extended_publish_due), { onAction(ErpAction.PUBLISH_DUE_NOTICES, emptyMap()) }, enabled = !isSubmitting)
+        }
+        if (snapshot.notices.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.notices.forEach { record ->
+            ErpRecordCard(
+                record = record,
+                fields = listOf("title", "audience", "status", "body", "publish_at", "expires_at", "read_count"),
+                actionLabel = if (isAdmin) stringResource(R.string.extended_notice_status) else if (!record.boolean("current_user_read")) stringResource(R.string.extended_mark_read) else null,
+                onAction = {
+                    if (isAdmin) onAction(ErpAction.SET_NOTICE_STATUS, mapOf("notice_id" to record.id))
+                    else onAction(ErpAction.MARK_NOTICE_READ, mapOf("notice_id" to record.id))
+                },
+            )
         }
     }
 }
@@ -430,9 +513,10 @@ private fun ErpActionDialog(
 
 @Composable
 private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin: Boolean, currentUserId: String): ErpActionSpec {
-    val memberOptions = snapshot.members
-        .filter { it.text("account_status") == "ACTIVE" && it.text("departed_at").isBlank() && (isAdmin || it.id == currentUserId) }
+    val allMemberOptions = snapshot.members
+        .filter { it.text("account_status") == "ACTIVE" && it.text("departed_at").isBlank() }
         .map { ErpOption(it.id, "${it.text("full_name")} (${it.text("member_id")})") }
+    val memberOptions = allMemberOptions.filter { isAdmin || it.id == currentUserId }
     val openPeriods = snapshot.periods.filter { it.status == "OPEN" }
         .map { ErpOption(it.id, it.text("label")) }
     val paymentOptions = snapshot.paymentReviews.filter { !it.boolean("reversed") }
@@ -442,6 +526,15 @@ private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin
     val expenseOptions = snapshot.expenses.map { ErpOption(it.id, "${it.text("description")} · ${it.text("spent_on")}") }
     val cashEntryOptions = snapshot.cashEntries.map { ErpOption(it.id, "${it.text("description")} · ${it.text("business_date")}") }
     val cashAccountOptions = snapshot.cashAccounts.filter { it.boolean("active") }.map { ErpOption(it.id, "${it.text("name")} · ${it.text("kind")}") }
+    val dutyOptions = snapshot.duties.filter { it.status == "ASSIGNED" && (isAdmin || it.text("assigned_to") == currentUserId) }
+        .map { ErpOption(it.id, "${it.text("title")} · ${it.text("due_on")}") }
+    val requestOptions = snapshot.dutyRequests.filter { it.status == "PENDING" }
+        .map { ErpOption(it.id, "${it.text("duty_title")} · ${it.text("requester_name")}") }
+    val managerOptions = snapshot.members.filter { it.text("account_status") == "ACTIVE" && it.text("role") in setOf("ADMIN", "MAIN_ADMIN") }
+        .map { ErpOption(it.id, it.text("full_name")) }
+    val rotationOptions = snapshot.managerRotations.filter { it.status == "SCHEDULED" }
+        .map { ErpOption(it.id, "${it.text("manager_name")} · ${it.text("starts_on")}") }
+    val noticeOptions = snapshot.notices.map { ErpOption(it.id, "${it.text("title")} · ${it.status}") }
     return when (action) {
         ErpAction.CREATE_FINE -> ErpActionSpec(
             stringResource(R.string.extended_add_fine),
@@ -560,6 +653,76 @@ private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin
         ErpAction.MARK_NOTIFICATION_READ -> ErpActionSpec(
             stringResource(R.string.extended_mark_read),
             listOf(ErpField("notification_id", stringResource(R.string.extended_notification_id))),
+        )
+        ErpAction.CREATE_DUTY -> ErpActionSpec(
+            stringResource(R.string.extended_create_duty),
+            listOf(
+                ErpField("assigned_to", stringResource(R.string.select_member), memberOptions),
+                ErpField("title", stringResource(R.string.extended_duty_title)),
+                ErpField("description", stringResource(R.string.description_label), singleLine = false),
+                ErpField("due_on", stringResource(R.string.date_label)),
+            ),
+        )
+        ErpAction.UPDATE_DUTY_STATUS -> ErpActionSpec(
+            stringResource(R.string.extended_update_duty),
+            listOf(
+                ErpField("duty_id", stringResource(R.string.extended_duty), dutyOptions),
+                ErpField("status", stringResource(R.string.status_label), listOf(ErpOption("COMPLETED", "COMPLETED"), ErpOption("MISSED", "MISSED"), ErpOption("CANCELLED", "CANCELLED"))),
+                ErpField("note", stringResource(R.string.description_label), singleLine = false),
+            ),
+        )
+        ErpAction.REQUEST_DUTY_CHANGE -> ErpActionSpec(
+            stringResource(R.string.extended_request_duty_change),
+            listOf(
+                ErpField("duty_id", stringResource(R.string.extended_duty), dutyOptions),
+                ErpField("kind", stringResource(R.string.extended_request_kind), listOf(ErpOption("CANNOT_DO", "CANNOT_DO"), ErpOption("SWAP", "SWAP"))),
+                ErpField("target_member_id", stringResource(R.string.extended_swap_target), allMemberOptions),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+            ),
+        )
+        ErpAction.REVIEW_DUTY_REQUEST -> ErpActionSpec(
+            stringResource(R.string.extended_review_duty_request),
+            listOf(
+                ErpField("request_id", stringResource(R.string.extended_duty_request), requestOptions),
+                ErpField("decision", stringResource(R.string.extended_review_status), listOf(ErpOption("APPROVED", stringResource(R.string.extended_verified)), ErpOption("REJECTED", stringResource(R.string.extended_rejected)))),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+            ),
+        )
+        ErpAction.SCHEDULE_MANAGER_ROTATION -> ErpActionSpec(
+            stringResource(R.string.extended_schedule_rotation),
+            listOf(
+                ErpField("manager_id", stringResource(R.string.extended_manager), managerOptions),
+                ErpField("starts_on", stringResource(R.string.period_start)),
+                ErpField("ends_on", stringResource(R.string.period_end)),
+                ErpField("handover_note", stringResource(R.string.extended_handover), singleLine = false),
+            ),
+        )
+        ErpAction.ACTIVATE_MANAGER_ROTATION -> ErpActionSpec(
+            stringResource(R.string.extended_activate_rotation),
+            listOf(ErpField("rotation_id", stringResource(R.string.extended_rotation), rotationOptions)),
+        )
+        ErpAction.SAVE_NOTICE -> ErpActionSpec(
+            stringResource(R.string.extended_create_notice),
+            listOf(
+                ErpField("title", stringResource(R.string.extended_notice_title)),
+                ErpField("body", stringResource(R.string.extended_notice_body), singleLine = false),
+                ErpField("audience", stringResource(R.string.extended_audience), listOf(ErpOption("ALL", "ALL"), ErpOption("MEMBERS", "MEMBERS"), ErpOption("ADMINS", "ADMINS"))),
+                ErpField("status", stringResource(R.string.status_label), listOf(ErpOption("DRAFT", "DRAFT"), ErpOption("SCHEDULED", "SCHEDULED"), ErpOption("PUBLISHED", "PUBLISHED"))),
+                ErpField("publish_at", stringResource(R.string.extended_publish_at)),
+                ErpField("expires_at", stringResource(R.string.extended_expires_at)),
+            ),
+        )
+        ErpAction.SET_NOTICE_STATUS -> ErpActionSpec(
+            stringResource(R.string.extended_notice_status),
+            listOf(
+                ErpField("notice_id", stringResource(R.string.extended_notice), noticeOptions),
+                ErpField("status", stringResource(R.string.status_label), listOf(ErpOption("PUBLISHED", "PUBLISHED"), ErpOption("CANCELLED", "CANCELLED"), ErpOption("ARCHIVED", "ARCHIVED"))),
+            ),
+        )
+        ErpAction.PUBLISH_DUE_NOTICES -> ErpActionSpec(stringResource(R.string.extended_publish_due), emptyList())
+        ErpAction.MARK_NOTICE_READ -> ErpActionSpec(
+            stringResource(R.string.extended_mark_read),
+            listOf(ErpField("notice_id", stringResource(R.string.extended_notice), noticeOptions)),
         )
     }
 }

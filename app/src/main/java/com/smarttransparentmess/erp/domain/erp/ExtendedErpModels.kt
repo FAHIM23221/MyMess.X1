@@ -29,6 +29,10 @@ data class ExtendedErpSnapshot(
     val cashAccounts: List<ErpRecord> = emptyList(),
     val cashEntries: List<ErpRecord> = emptyList(),
     val cashPeriodLocks: List<ErpRecord> = emptyList(),
+    val duties: List<ErpRecord> = emptyList(),
+    val dutyRequests: List<ErpRecord> = emptyList(),
+    val managerRotations: List<ErpRecord> = emptyList(),
+    val notices: List<ErpRecord> = emptyList(),
     val loadedAt: String,
 )
 
@@ -47,6 +51,16 @@ enum class ErpAction(val wireValue: String) {
     CLOSE_CASH_PERIOD("close_cash_period"),
     UPDATE_MESS_SETTINGS("update_mess_settings"),
     MARK_NOTIFICATION_READ("mark_notification_read"),
+    CREATE_DUTY("create_duty"),
+    UPDATE_DUTY_STATUS("update_duty_status"),
+    REQUEST_DUTY_CHANGE("request_duty_change"),
+    REVIEW_DUTY_REQUEST("review_duty_request"),
+    SCHEDULE_MANAGER_ROTATION("schedule_manager_rotation"),
+    ACTIVATE_MANAGER_ROTATION("activate_manager_rotation"),
+    SAVE_NOTICE("save_notice"),
+    SET_NOTICE_STATUS("set_notice_status"),
+    PUBLISH_DUE_NOTICES("publish_due_notices"),
+    MARK_NOTICE_READ("mark_notice_read"),
 }
 
 enum class ExtendedErpValidationError {
@@ -80,6 +94,18 @@ object ExtendedErpValidation {
         fun optionalDate(key: String) {
             val value = values[key].orEmpty()
             if (value.isNotEmpty() && (!isoDate.matches(value) || runCatching { java.time.LocalDate.parse(value) }.isFailure)) {
+                throw ExtendedErpValidationException(ExtendedErpValidationError.DATE)
+            }
+        }
+        fun optionalTimestamp(key: String) {
+            val value = values[key].orEmpty()
+            if (value.isNotEmpty() && runCatching {
+                java.time.Instant.parse(value)
+            }.isFailure && runCatching {
+                java.time.OffsetDateTime.parse(value)
+            }.isFailure && runCatching {
+                java.time.LocalDate.parse(value)
+            }.isFailure) {
                 throw ExtendedErpValidationException(ExtendedErpValidationError.DATE)
             }
         }
@@ -161,6 +187,46 @@ object ExtendedErpValidation {
                 if (values.getValue("meal_reminders_enabled") !in setOf("true", "false")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
             }
             ErpAction.MARK_NOTIFICATION_READ -> required("notification_id")
+            ErpAction.CREATE_DUTY -> {
+                required("assigned_to", "title", "description", "due_on")
+                optionalDate("due_on")
+                if (values.getValue("title").length !in 2..160 || values.getValue("description").length !in 2..1000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
+            ErpAction.UPDATE_DUTY_STATUS -> {
+                required("duty_id", "status")
+                if (values.getValue("status") !in setOf("COMPLETED", "MISSED", "CANCELLED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values["note"].orEmpty().isNotEmpty() && values.getValue("note").length !in 2..500) throw ExtendedErpValidationException(ExtendedErpValidationError.REASON)
+            }
+            ErpAction.REQUEST_DUTY_CHANGE -> {
+                required("duty_id", "kind", "reason")
+                if (values.getValue("kind") !in setOf("CANNOT_DO", "SWAP")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("reason").length !in 8..500) throw ExtendedErpValidationException(ExtendedErpValidationError.REASON)
+                if (values.getValue("kind") == "SWAP" && values["target_member_id"].isNullOrBlank()) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+            }
+            ErpAction.REVIEW_DUTY_REQUEST -> {
+                required("request_id", "decision")
+                if (values.getValue("decision") !in setOf("APPROVED", "REJECTED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+            }
+            ErpAction.SCHEDULE_MANAGER_ROTATION -> {
+                required("manager_id", "starts_on")
+                optionalDate("starts_on")
+                optionalDate("ends_on")
+            }
+            ErpAction.ACTIVATE_MANAGER_ROTATION -> required("rotation_id")
+            ErpAction.SAVE_NOTICE -> {
+                required("title", "body", "audience", "status")
+                if (values.getValue("audience") !in setOf("ALL", "MEMBERS", "ADMINS") || values.getValue("status") !in setOf("DRAFT", "SCHEDULED", "PUBLISHED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                if (values.getValue("title").length !in 2..160 || values.getValue("body").length !in 2..4000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+                if (values.getValue("status") == "SCHEDULED" && values["publish_at"].isNullOrBlank()) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+                optionalTimestamp("publish_at")
+                optionalTimestamp("expires_at")
+            }
+            ErpAction.SET_NOTICE_STATUS -> {
+                required("notice_id", "status")
+                if (values.getValue("status") !in setOf("PUBLISHED", "CANCELLED", "ARCHIVED")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+            }
+            ErpAction.PUBLISH_DUE_NOTICES -> Unit
+            ErpAction.MARK_NOTICE_READ -> required("notice_id")
         }
         return values
     }
