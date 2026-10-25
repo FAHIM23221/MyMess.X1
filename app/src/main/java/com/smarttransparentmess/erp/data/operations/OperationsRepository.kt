@@ -16,6 +16,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -65,7 +66,10 @@ class SupabaseOperationsRepository(
         val memberNames = profiles.associate { it.userId to it.fullName }
 
         val meals = client.from("meal_entries").select().decodeList<MealEntryDto>()
-            .sortedWith(compareByDescending<MealEntryDto> { it.mealDate }.thenByDescending { it.createdAt })
+            .sortedWith(
+                compareByDescending<MealEntryDto> { it.mealDate }
+                    .thenByDescending { Instant.parse(it.createdAt) },
+            )
             .map { row ->
                 MealEntry(
                     id = row.id,
@@ -79,12 +83,12 @@ class SupabaseOperationsRepository(
                 )
             }
         val mealReversals = client.from("meal_reversals").select().decodeList<MealReversalDto>()
-            .sortedByDescending { it.createdAt }
+            .sortedByDescending { Instant.parse(it.createdAt) }
             .map { row ->
                 MealReversal(row.mealEntryId, row.reason, displayTime(row.createdAt.toString()))
             }
         val riceMovements = client.from("rice_movements").select().decodeList<RiceMovementDto>()
-            .sortedByDescending { it.createdAt }
+            .sortedByDescending { Instant.parse(it.createdAt) }
             .map { row ->
                 RiceMovement(
                     id = row.id,
@@ -95,7 +99,10 @@ class SupabaseOperationsRepository(
                 )
             }
         val expenses = client.from("expenses").select().decodeList<ExpenseDto>()
-            .sortedWith(compareByDescending<ExpenseDto> { it.spentOn }.thenByDescending { it.createdAt })
+            .sortedWith(
+                compareByDescending<ExpenseDto> { it.spentOn }
+                    .thenByDescending { Instant.parse(it.createdAt) },
+            )
             .map { row ->
                 ExpenseRecord(
                     id = row.id,
@@ -108,12 +115,12 @@ class SupabaseOperationsRepository(
                 )
             }
         val expenseReversals = client.from("expense_reversals").select().decodeList<ExpenseReversalDto>()
-            .sortedByDescending { it.createdAt }
+            .sortedByDescending { Instant.parse(it.createdAt) }
             .map { row ->
                 ExpenseReversal(row.expenseId, row.reason, displayTime(row.createdAt.toString()))
             }
         val cashBook = client.from("cash_book_entries").select().decodeList<CashBookEntryDto>()
-            .sortedByDescending { it.occurredAt }
+            .sortedByDescending { Instant.parse(it.occurredAt) }
             .map { row ->
                 CashBookEntry(
                     id = row.id,
@@ -223,7 +230,7 @@ class SupabaseOperationsRepository(
         )
     }
 
-    private fun displayTime(value: String): String = java.time.Instant.parse(value)
+    private fun displayTime(value: String): String = Instant.parse(value)
         .atZone(ZoneId.systemDefault())
         .format(displayFormatter)
 

@@ -71,7 +71,7 @@ fun AdminPaymentSection(
         val query = searchQuery.trim().lowercase()
         (query.isEmpty() || entry.memberName.lowercase().contains(query) ||
             entry.payment.receiptNumber.lowercase().contains(query) ||
-            entry.payment.periodLabel.lowercase().contains(query) ||
+            entry.periodLabel.lowercase().contains(query) ||
             entry.payment.transactionReference.orEmpty().lowercase().contains(query)) &&
             (methodFilter == null || entry.payment.method == methodFilter) &&
             when (statusFilter) {
