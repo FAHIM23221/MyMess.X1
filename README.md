@@ -2,7 +2,7 @@
 
 A native Android ERP using Kotlin, Jetpack Compose/Material 3, MVVM/repositories, Coroutines/Flow, Supabase Auth/Postgres, and server-side row-level security (RLS). It is not a web wrapper.
 
-> **Verified baseline:** main commit `5aaf473f733c412aaf22113b71531a7f7ad84a01` passed Android workflow run `40153010838`, including JVM tests, debug build, and APK upload. Phase 1 Auth/profile/RLS and singleton Main Admin bootstrap are also applied and verified on the new Supabase project. The Phase 2 Android changes on this branch still require their own workflow result; see [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for exact current and blocked states.
+> **Verified baseline:** main commit `5aaf473f733c412aaf22113b71531a7f7ad84a01` passed Android workflow run `40153010838`, including JVM tests, debug build, and APK upload. Phase 1 Auth/profile/RLS and singleton Main Admin bootstrap are also applied and verified on the new Supabase project. Phase 2 commit `35119bb131a5df5cb41d3079850c80a8c30112a0` also passed run `40157238078`, including its new finance JVM tests and debug build. See [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for exact current and blocked states.
 
 ## Implemented source scope
 
