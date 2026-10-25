@@ -178,6 +178,42 @@ require("direct authenticated cash-book insert was accepted" in phase3_smoke_sql
 require("insufficient rice stock" in phase3_smoke_sql, "Phase 3 smoke test must cover rice stock guards")
 require("cash book trigger totals failed" in phase3_smoke_sql, "Phase 3 smoke test must cover all cash-book triggers")
 
+admin_notification_sql = read("supabase/migrations/0025_admin_member_notifications.sql").lower()
+for fragment in (
+    "create table public.member_notification_batches",
+    "alter table public.member_notification_batches enable row level security",
+    "revoke all on public.member_notification_batches from public, anon, authenticated",
+    "add column batch_id uuid references public.member_notification_batches(id)",
+    "one_batch_notification_per_recipient",
+    "create or replace function public.send_member_notification(",
+    "active admin or main admin access required",
+    "an active same-mess recipient is required",
+    "unique (mess_id, client_request_id)",
+    "'member_notification_sent'",
+    "create policy audit_logs_select_member_notification_admin",
+    "revoke all on function public.send_member_notification(text, uuid, text, text, uuid) from public, anon",
+    "grant execute on function public.send_member_notification(text, uuid, text, text, uuid) to authenticated",
+):
+    require(fragment in admin_notification_sql, f"Admin notification SQL contract missing: {fragment}")
+require("disable row level security" not in admin_notification_sql, "Admin notification migration must never disable RLS")
+admin_notification_smoke = read("supabase/tests/phase_admin_member_notifications_smoke.sql").lower()
+require(
+    "begin;" in admin_notification_smoke and "rollback;" in admin_notification_smoke,
+    "Admin notification smoke test must be rollback-only",
+)
+for fragment in (
+    "notification retry was not idempotent",
+    "a non-member notification recipient was accepted",
+    "a missing-profile notification actor was accepted",
+    "direct notification-batch insert was accepted",
+):
+    require(fragment in admin_notification_smoke, f"Admin notification smoke coverage missing: {fragment}")
+extended_repository = read("app/src/main/java/com/smarttransparentmess/erp/data/erp/ExtendedErpRepository.kt")
+extended_screen = read("app/src/main/java/com/smarttransparentmess/erp/ui/erp/ExtendedErpScreen.kt")
+require("ErpAction.SEND_MEMBER_NOTIFICATION" in extended_repository, "Admin notification repository RPC wiring is missing")
+require("ErpAction.SEND_MEMBER_NOTIFICATION" in extended_screen, "Admin notification composer wiring is missing")
+require("notificationBatches" in extended_screen, "Admin notification batch history is missing")
+
 profile_dto = read("app/src/main/java/com/smarttransparentmess/erp/data/profile/ProfileDto.kt")
 update_dto = profile_dto.split("data class ProfileUpdateDto(", maxsplit=1)[-1]
 require("role" not in update_dto.lower(), "Client profile-update DTO must not contain a role field")
@@ -223,6 +259,8 @@ for test_path in (
     "app/src/test/java/com/smarttransparentmess/erp/domain/validation/FinanceEntryValidatorTest.kt",
     "app/src/test/java/com/smarttransparentmess/erp/domain/operations/OperationsCalculatorTest.kt",
     "app/src/test/java/com/smarttransparentmess/erp/domain/validation/OperationsValidationTest.kt",
+    "app/src/test/java/com/smarttransparentmess/erp/domain/erp/ExtendedErpNotificationValidationTest.kt",
+    "app/src/test/java/com/smarttransparentmess/erp/data/erp/ExtendedErpDtosTest.kt",
 ):
     require((ROOT / test_path).is_file(), f"Required Admin finance JVM test is missing: {test_path}")
 

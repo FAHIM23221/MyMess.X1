@@ -25,6 +25,7 @@ data class ExtendedErpSnapshot(
     val expenses: List<ErpRecord> = emptyList(),
     val messSettings: List<ErpRecord> = emptyList(),
     val notifications: List<ErpRecord> = emptyList(),
+    val notificationBatches: List<ErpRecord> = emptyList(),
     val riceStockAlerts: List<ErpRecord> = emptyList(),
     val cashAccounts: List<ErpRecord> = emptyList(),
     val cashEntries: List<ErpRecord> = emptyList(),
@@ -55,6 +56,7 @@ enum class ErpAction(val wireValue: String) {
     CLOSE_CASH_PERIOD("close_cash_period"),
     UPDATE_MESS_SETTINGS("update_mess_settings"),
     MARK_NOTIFICATION_READ("mark_notification_read"),
+    SEND_MEMBER_NOTIFICATION("send_member_notification"),
     CREATE_DUTY("create_duty"),
     UPDATE_DUTY_STATUS("update_duty_status"),
     REQUEST_DUTY_CHANGE("request_duty_change"),
@@ -200,6 +202,19 @@ object ExtendedErpValidation {
                 if (values.getValue("meal_reminders_enabled") !in setOf("true", "false")) throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
             }
             ErpAction.MARK_NOTIFICATION_READ -> required("notification_id")
+            ErpAction.SEND_MEMBER_NOTIFICATION -> {
+                required("audience", "title", "body")
+                val audience = values.getValue("audience")
+                if (audience !in setOf("MEMBER", "ALL", "ADMINS")) {
+                    throw ExtendedErpValidationException(ExtendedErpValidationError.SELECTION)
+                }
+                if (audience == "MEMBER") required("member_id")
+                if (values.getValue("title").length !in 2..200 ||
+                    values.getValue("body").length !in 2..4000
+                ) {
+                    throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
+                }
+            }
             ErpAction.CREATE_DUTY -> {
                 required("assigned_to", "title", "description", "due_on")
                 optionalDate("due_on")

@@ -143,6 +143,19 @@ class SupabaseExtendedErpRepository(
                 "mark_notification_read",
                 buildJsonObject { put("target_notification_id", JsonPrimitive(fields.getValue("notification_id"))) },
             )
+            ErpAction.SEND_MEMBER_NOTIFICATION -> client.postgrest.rpc(
+                "send_member_notification",
+                buildJsonObject {
+                    put("target_audience", JsonPrimitive(fields.getValue("audience")))
+                    putNullable(
+                        "target_member_id",
+                        fields["member_id"].takeIf { fields.getValue("audience") == "MEMBER" },
+                    )
+                    put("target_title", JsonPrimitive(fields.getValue("title")))
+                    put("target_body", JsonPrimitive(fields.getValue("body")))
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
             ErpAction.CREATE_DUTY -> client.postgrest.rpc(
                 "create_duty",
                 buildJsonObject {

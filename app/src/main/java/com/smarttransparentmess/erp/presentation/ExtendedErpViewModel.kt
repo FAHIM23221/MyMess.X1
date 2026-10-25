@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 enum class ExtendedErpNotice {
     OPERATION_SUCCEEDED,
+    MEMBER_NOTIFICATION_SAVED,
 }
 
 data class ExtendedErpUiState(
@@ -110,7 +111,11 @@ class ExtendedErpViewModel(
                         isSubmitting = false,
                         snapshot = refreshed ?: _uiState.value.snapshot,
                         loadFailed = refreshed == null,
-                        notice = ExtendedErpNotice.OPERATION_SUCCEEDED,
+                        notice = if (action == ErpAction.SEND_MEMBER_NOTIFICATION) {
+                            ExtendedErpNotice.MEMBER_NOTIFICATION_SAVED
+                        } else {
+                            ExtendedErpNotice.OPERATION_SUCCEEDED
+                        },
                     )
                 }
             } catch (error: CancellationException) {

@@ -36,6 +36,7 @@ import com.smarttransparentmess.erp.domain.erp.ErpRecord
 import com.smarttransparentmess.erp.domain.erp.ExtendedErpSnapshot
 import com.smarttransparentmess.erp.domain.erp.ExtendedErpValidationError
 import com.smarttransparentmess.erp.domain.finance.Money
+import com.smarttransparentmess.erp.presentation.ExtendedErpNotice
 import com.smarttransparentmess.erp.presentation.ExtendedErpUiState
 import com.smarttransparentmess.erp.presentation.ExtendedErpViewModel
 import com.smarttransparentmess.erp.ui.FormCard
@@ -77,8 +78,12 @@ fun ExtendedErpScreen(
                 Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.retry))
             }
         }
-        state.notice?.let {
-            InfoCard(stringResource(R.string.extended_success_title), stringResource(R.string.extended_operation_success))
+        state.notice?.let { notice ->
+            val message = when (notice) {
+                ExtendedErpNotice.OPERATION_SUCCEEDED -> R.string.extended_operation_success
+                ExtendedErpNotice.MEMBER_NOTIFICATION_SAVED -> R.string.extended_member_notification_saved
+            }
+            InfoCard(stringResource(R.string.extended_success_title), stringResource(message))
         }
         if (state.operationFailed) {
             InfoCard(stringResource(R.string.extended_error_title), stringResource(R.string.extended_operation_failed))
@@ -491,6 +496,60 @@ private fun OperationsWorkspace(
                 onAction = { onAction(ErpAction.MARK_NOTIFICATION_READ, mapOf("notification_id" to record.id)) },
             )
         }
+        if (isAdmin) {
+            Text(stringResource(R.string.extended_send_member_notification), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.extended_send_member_notification_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(
+                onClick = { onAction(ErpAction.SEND_MEMBER_NOTIFICATION, emptyMap()) },
+                enabled = !isSubmitting,
+            ) { Text(stringResource(R.string.extended_send_member_notification)) }
+            Text(stringResource(R.string.extended_notification_history), style = MaterialTheme.typography.titleSmall)
+            if (snapshot.notificationBatches.isEmpty()) {
+                Text(
+                    stringResource(R.string.extended_no_notification_batches),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            snapshot.notificationBatches.take(5).forEach { batch ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(Spacing.Medium),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.XSmall),
+                    ) {
+                        Text(batch.text("title"), style = MaterialTheme.typography.titleSmall)
+                        Text(batch.text("body"), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(
+                                R.string.extended_notification_batch_meta,
+                                batch.text("audience"),
+                                batch.long("recipient_count") ?: 0L,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        val target = batch.text("target_member_name")
+                        if (target.isNotBlank()) {
+                            Text(
+                                stringResource(R.string.extended_notification_batch_target, target),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        Text(
+                            stringResource(
+                                R.string.extended_notification_batch_actor_time,
+                                batch.text("actor_name"),
+                                batch.text("created_at").substringBefore('.'),
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -561,6 +620,11 @@ private fun ErpActionDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.Medium)) {
                 spec.fields.forEach { field ->
+                    if (action == ErpAction.SEND_MEMBER_NOTIFICATION &&
+                        field.key == "member_id" && values["audience"] != "MEMBER"
+                    ) {
+                        return@forEach
+                    }
                     if (field.options.isNotEmpty()) {
                         val selected = field.options.firstOrNull { it.id == values[field.key] }
                         SelectionField(
@@ -742,6 +806,23 @@ private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot, isAdmin
         ErpAction.MARK_NOTIFICATION_READ -> ErpActionSpec(
             stringResource(R.string.extended_mark_read),
             listOf(ErpField("notification_id", stringResource(R.string.extended_notification_id))),
+        )
+        ErpAction.SEND_MEMBER_NOTIFICATION -> ErpActionSpec(
+            stringResource(R.string.extended_send_member_notification),
+            listOf(
+                ErpField(
+                    "audience",
+                    stringResource(R.string.extended_notification_audience),
+                    listOf(
+                        ErpOption("MEMBER", stringResource(R.string.extended_notification_audience_member)),
+                        ErpOption("ALL", stringResource(R.string.extended_notification_audience_all)),
+                        ErpOption("ADMINS", stringResource(R.string.extended_notification_audience_admins)),
+                    ),
+                ),
+                ErpField("member_id", stringResource(R.string.select_member), allMemberOptions),
+                ErpField("title", stringResource(R.string.extended_notification_title)),
+                ErpField("body", stringResource(R.string.extended_notification_body), singleLine = false),
+            ),
         )
         ErpAction.CREATE_DUTY -> ErpActionSpec(
             stringResource(R.string.extended_create_duty),
