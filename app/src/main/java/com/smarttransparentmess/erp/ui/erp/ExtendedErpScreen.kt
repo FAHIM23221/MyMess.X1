@@ -632,7 +632,16 @@ private fun ErpActionDialog(
                             options = field.options,
                             selected = selected,
                             display = { it.label },
-                            onSelected = { values = values + (field.key to it.id) },
+                            onSelected = {
+                                val updated = values + (field.key to it.id)
+                                values = if (action == ErpAction.SEND_MEMBER_NOTIFICATION &&
+                                    field.key == "audience" && it.id != "MEMBER"
+                                ) {
+                                    updated - "member_id"
+                                } else {
+                                    updated
+                                }
+                            },
                             emptyText = field.label,
                         )
                     } else {

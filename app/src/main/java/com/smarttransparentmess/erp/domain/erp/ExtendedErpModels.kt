@@ -294,6 +294,10 @@ object ExtendedErpValidation {
                 if (values.getValue("response").length !in 2..2000) throw ExtendedErpValidationException(ExtendedErpValidationError.REQUIRED)
             }
         }
-        return values
+        return if (action == ErpAction.SEND_MEMBER_NOTIFICATION && values["audience"] != "MEMBER") {
+            values - "member_id"
+        } else {
+            values
+        }
     }
 }

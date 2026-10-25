@@ -1,6 +1,7 @@
 package com.smarttransparentmess.erp.domain.erp
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,9 +42,15 @@ class ExtendedErpNotificationValidationTest {
         listOf("ALL", "ADMINS").forEach { audience ->
             val valid = ExtendedErpValidation.validate(
                 ErpAction.SEND_MEMBER_NOTIFICATION,
-                mapOf("audience" to audience, "title" to "Meeting", "body" to "Please join at 8 PM."),
+                mapOf(
+                    "audience" to audience,
+                    "member_id" to "stale-hidden-selection",
+                    "title" to "Meeting",
+                    "body" to "Please join at 8 PM.",
+                ),
             )
             assertEquals(audience, valid.getValue("audience"))
+            assertFalse(valid.containsKey("member_id"))
         }
     }
 
