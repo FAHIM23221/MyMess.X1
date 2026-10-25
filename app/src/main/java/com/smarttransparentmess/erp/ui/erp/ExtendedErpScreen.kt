@@ -1,0 +1,332 @@
+package com.smarttransparentmess.erp.ui.erp
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.smarttransparentmess.erp.R
+import com.smarttransparentmess.erp.domain.erp.ErpAction
+import com.smarttransparentmess.erp.domain.erp.ErpRecord
+import com.smarttransparentmess.erp.domain.erp.ExtendedErpSnapshot
+import com.smarttransparentmess.erp.domain.erp.ExtendedErpValidationError
+import com.smarttransparentmess.erp.domain.finance.Money
+import com.smarttransparentmess.erp.presentation.ExtendedErpUiState
+import com.smarttransparentmess.erp.presentation.ExtendedErpViewModel
+import com.smarttransparentmess.erp.ui.FormCard
+import com.smarttransparentmess.erp.ui.InfoCard
+import com.smarttransparentmess.erp.ui.KeyValueRow
+import com.smarttransparentmess.erp.ui.LoadingContent
+import com.smarttransparentmess.erp.ui.PrimaryActionButton
+import com.smarttransparentmess.erp.ui.SelectionField
+import com.smarttransparentmess.erp.ui.StatusPill
+import com.smarttransparentmess.erp.ui.theme.Spacing
+
+@Composable
+fun ExtendedErpScreen(
+    state: ExtendedErpUiState,
+    viewModel: ExtendedErpViewModel,
+    isAdmin: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    var activeAction by remember { mutableStateOf<ErpAction?>(null) }
+    var prefill by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val snapshot = state.snapshot
+
+    Column(
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.XLarge),
+        verticalArrangement = Arrangement.spacedBy(Spacing.Large),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.extended_title), style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.extended_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = viewModel::refresh, enabled = !state.isLoading && !state.isSubmitting) {
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.retry))
+            }
+        }
+        state.notice?.let {
+            InfoCard(stringResource(R.string.extended_success_title), stringResource(R.string.extended_operation_success))
+        }
+        if (state.operationFailed) {
+            InfoCard(stringResource(R.string.extended_error_title), stringResource(R.string.extended_operation_failed))
+        }
+        state.validationError?.let { error ->
+            InfoCard(stringResource(R.string.extended_error_title), stringResource(error.messageRes()))
+        }
+        if (state.isLoading && snapshot != null) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+
+        when {
+            snapshot == null && state.isLoading -> LoadingContent(stringResource(R.string.extended_loading), Modifier.fillMaxWidth())
+            snapshot == null -> InfoCard(stringResource(R.string.extended_title), stringResource(R.string.extended_no_data))
+            else -> BillingWorkspace(
+                snapshot = snapshot,
+                isAdmin = isAdmin,
+                isSubmitting = state.isSubmitting,
+                onAction = { action, values ->
+                    viewModel.clearFeedback()
+                    prefill = values
+                    activeAction = action
+                },
+            )
+        }
+    }
+
+    activeAction?.let { action ->
+        if (snapshot != null) {
+            ErpActionDialog(
+                action = action,
+                snapshot = snapshot,
+                prefill = prefill,
+                isSubmitting = state.isSubmitting,
+                onDismiss = { activeAction = null },
+                onSubmit = { values ->
+                    viewModel.execute(action, values)
+                    activeAction = null
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BillingWorkspace(
+    snapshot: ExtendedErpSnapshot,
+    isAdmin: Boolean,
+    isSubmitting: Boolean,
+    onAction: (ErpAction, Map<String, String>) -> Unit,
+) {
+    if (isAdmin) {
+        FormCard(title = stringResource(R.string.extended_billing_actions), subtitle = stringResource(R.string.extended_billing_actions_body)) {
+            PrimaryActionButton(stringResource(R.string.extended_add_fine), { onAction(ErpAction.CREATE_FINE, emptyMap()) }, enabled = !isSubmitting)
+            PrimaryActionButton(stringResource(R.string.extended_review_payment), { onAction(ErpAction.REVIEW_PAYMENT, emptyMap()) }, enabled = !isSubmitting)
+            PrimaryActionButton(stringResource(R.string.extended_meal_policy), { onAction(ErpAction.SET_MEAL_BILLING_POLICY, emptyMap()) }, enabled = !isSubmitting)
+            PrimaryActionButton(stringResource(R.string.extended_generate_bill), { onAction(ErpAction.GENERATE_MEAL_BILL, emptyMap()) }, enabled = !isSubmitting)
+        }
+    }
+
+    FormCard(title = stringResource(R.string.extended_meal_policy)) {
+        val policy = snapshot.mealBillingPolicies.firstOrNull()
+        if (policy == null) {
+            Text(stringResource(R.string.extended_no_policy))
+        } else {
+            KeyValueRow(
+                stringResource(R.string.extended_price_half_meal),
+                stringResource(R.string.bdt_amount, Money.format(policy.long("price_per_half_meal_minor") ?: 0L)),
+            )
+            StatusPill(stringResource(if (policy.boolean("enabled")) R.string.extended_enabled else R.string.extended_disabled))
+        }
+    }
+
+    FormCard(title = stringResource(R.string.extended_fines)) {
+        if (snapshot.fines.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.fines.forEach { fine -> FineCard(fine) }
+    }
+
+    FormCard(title = stringResource(R.string.extended_review_payment)) {
+        if (snapshot.paymentReviews.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.paymentReviews.forEach { payment ->
+            PaymentReviewCard(
+                payment = payment,
+                isAdmin = isAdmin,
+                enabled = !isSubmitting,
+                onReview = { onAction(ErpAction.REVIEW_PAYMENT, mapOf("payment_id" to payment.id)) },
+            )
+        }
+    }
+
+    FormCard(title = stringResource(R.string.extended_bill_runs)) {
+        if (snapshot.mealBillingRuns.isEmpty()) Text(stringResource(R.string.extended_no_records))
+        snapshot.mealBillingRuns.forEach { run ->
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.XSmall)) {
+                Column(modifier = Modifier.padding(Spacing.Medium), verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+                    Text(run.text("period_label"), style = MaterialTheme.typography.titleSmall)
+                    KeyValueRow(stringResource(R.string.extended_half_meal_units), run.text("total_half_meal_units"))
+                    KeyValueRow(stringResource(R.string.extended_total_amount), stringResource(R.string.bdt_amount, Money.format(run.long("total_amount_minor") ?: 0L)))
+                    Text(run.text("created_at").substringBefore('.'), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FineCard(fine: ErpRecord) {
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.XSmall)) {
+        Column(modifier = Modifier.padding(Spacing.Medium), verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+            Text(fine.text("member_name"), style = MaterialTheme.typography.titleSmall)
+            KeyValueRow(stringResource(R.string.amount_label), stringResource(R.string.bdt_amount, Money.format(fine.long("amount_minor") ?: 0L)))
+            KeyValueRow(stringResource(R.string.select_period), fine.text("period_label"))
+            Text(fine.text("reason"), style = MaterialTheme.typography.bodyMedium)
+            if (fine.text("due_date").isNotBlank()) KeyValueRow(stringResource(R.string.due_date_optional), fine.text("due_date"))
+        }
+    }
+}
+
+@Composable
+private fun PaymentReviewCard(payment: ErpRecord, isAdmin: Boolean, enabled: Boolean, onReview: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.XSmall)) {
+        Column(modifier = Modifier.padding(Spacing.Medium), verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(payment.text("member_name"), style = MaterialTheme.typography.titleSmall)
+                StatusPill(payment.status)
+            }
+            KeyValueRow(stringResource(R.string.amount_label), stringResource(R.string.bdt_amount, Money.format(payment.long("amount_minor") ?: 0L)))
+            KeyValueRow(stringResource(R.string.select_period), payment.text("period_label"))
+            KeyValueRow(stringResource(R.string.extended_payment_method), payment.text("payment_method"))
+            if (payment.text("transaction_reference").isNotBlank()) KeyValueRow(stringResource(R.string.extended_reference), payment.text("transaction_reference"))
+            if (payment.boolean("reversed")) Text(stringResource(R.string.payment_status_reversed), color = MaterialTheme.colorScheme.error)
+            if (payment.text("reason").isNotBlank()) Text(payment.text("reason"), style = MaterialTheme.typography.bodySmall)
+            if (isAdmin && !payment.boolean("reversed")) {
+                OutlinedButton(onClick = onReview, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.extended_review_payment))
+                }
+            }
+        }
+    }
+}
+
+private data class ErpOption(val id: String, val label: String)
+private data class ErpField(
+    val key: String,
+    val label: String,
+    val options: List<ErpOption> = emptyList(),
+    val singleLine: Boolean = true,
+)
+private data class ErpActionSpec(val title: String, val fields: List<ErpField>)
+
+@Composable
+private fun ErpActionDialog(
+    action: ErpAction,
+    snapshot: ExtendedErpSnapshot,
+    prefill: Map<String, String>,
+    isSubmitting: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (Map<String, String>) -> Unit,
+) {
+    val spec = actionSpec(action, snapshot)
+    var values by remember(action, prefill) { mutableStateOf(prefill) }
+    AlertDialog(
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
+        title = { Text(spec.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.Medium)) {
+                spec.fields.forEach { field ->
+                    if (field.options.isNotEmpty()) {
+                        val selected = field.options.firstOrNull { it.id == values[field.key] }
+                        SelectionField(
+                            label = field.label,
+                            options = field.options,
+                            selected = selected,
+                            display = { it.label },
+                            onSelected = { values = values + (field.key to it.id) },
+                            emptyText = field.label,
+                        )
+                    } else {
+                        OutlinedTextField(
+                            value = values[field.key].orEmpty(),
+                            onValueChange = { values = values + (field.key to it) },
+                            label = { Text(field.label) },
+                            singleLine = field.singleLine,
+                            minLines = if (field.singleLine) 1 else 3,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSubmit(values) }, enabled = !isSubmitting) {
+                Text(stringResource(R.string.extended_submit))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun actionSpec(action: ErpAction, snapshot: ExtendedErpSnapshot): ErpActionSpec {
+    val memberOptions = snapshot.members
+        .filter { it.text("account_status") == "ACTIVE" && it.text("departed_at").isBlank() }
+        .map { ErpOption(it.id, "${it.text("full_name")} (${it.text("member_id")})") }
+    val openPeriods = snapshot.periods.filter { it.status == "OPEN" }
+        .map { ErpOption(it.id, it.text("label")) }
+    val paymentOptions = snapshot.paymentReviews.filter { !it.boolean("reversed") }
+        .map { ErpOption(it.id, "${it.text("member_name")} · ${it.text("period_label")} · ${it.status}") }
+    return when (action) {
+        ErpAction.CREATE_FINE -> ErpActionSpec(
+            stringResource(R.string.extended_add_fine),
+            listOf(
+                ErpField("member_id", stringResource(R.string.select_member), memberOptions),
+                ErpField("period_id", stringResource(R.string.select_period), openPeriods),
+                ErpField("amount_minor", stringResource(R.string.extended_amount_minor)),
+                ErpField("reason", stringResource(R.string.reason_label), singleLine = false),
+                ErpField("due_date", stringResource(R.string.due_date_optional)),
+            ),
+        )
+        ErpAction.REVIEW_PAYMENT -> ErpActionSpec(
+            stringResource(R.string.extended_review_payment),
+            listOf(
+                ErpField("payment_id", stringResource(R.string.extended_select_payment), paymentOptions),
+                ErpField("status", stringResource(R.string.extended_review_status), listOf(
+                    ErpOption("VERIFIED", stringResource(R.string.extended_verified)),
+                    ErpOption("REJECTED", stringResource(R.string.extended_rejected)),
+                )),
+                ErpField("reason", stringResource(R.string.extended_review_reason), singleLine = false),
+            ),
+        )
+        ErpAction.SET_MEAL_BILLING_POLICY -> ErpActionSpec(
+            stringResource(R.string.extended_meal_policy),
+            listOf(
+                ErpField("price_per_half_meal_minor", stringResource(R.string.extended_price_minor)),
+                ErpField("enabled", stringResource(R.string.extended_review_status), listOf(
+                    ErpOption("true", stringResource(R.string.extended_enabled)),
+                    ErpOption("false", stringResource(R.string.extended_disabled)),
+                )),
+            ),
+        )
+        ErpAction.GENERATE_MEAL_BILL -> ErpActionSpec(
+            stringResource(R.string.extended_generate_bill),
+            listOf(
+                ErpField("period_id", stringResource(R.string.select_period), openPeriods),
+                ErpField("due_date", stringResource(R.string.due_date_optional)),
+            ),
+        )
+    }
+}
+
+private fun ExtendedErpValidationError.messageRes(): Int = when (this) {
+    ExtendedErpValidationError.REQUIRED -> R.string.extended_validation_required
+    ExtendedErpValidationError.AMOUNT -> R.string.validation_amount
+    ExtendedErpValidationError.DATE -> R.string.validation_date
+    ExtendedErpValidationError.REASON -> R.string.validation_reason
+    ExtendedErpValidationError.SELECTION -> R.string.extended_validation_selection
+}

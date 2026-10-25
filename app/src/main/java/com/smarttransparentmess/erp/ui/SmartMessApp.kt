@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Icon
@@ -40,6 +41,8 @@ import com.smarttransparentmess.erp.presentation.AppUiState
 import com.smarttransparentmess.erp.presentation.AuthViewModel
 import com.smarttransparentmess.erp.presentation.FinanceUiState
 import com.smarttransparentmess.erp.presentation.FinanceViewModel
+import com.smarttransparentmess.erp.presentation.ExtendedErpUiState
+import com.smarttransparentmess.erp.presentation.ExtendedErpViewModel
 import com.smarttransparentmess.erp.presentation.MemberManagementUiState
 import com.smarttransparentmess.erp.presentation.MemberManagementViewModel
 import com.smarttransparentmess.erp.presentation.OperationsUiState
@@ -53,6 +56,7 @@ import com.smarttransparentmess.erp.ui.auth.PasswordUpdateScreen
 import com.smarttransparentmess.erp.ui.dashboard.DashboardScreen
 import com.smarttransparentmess.erp.ui.navigation.LocalRoute
 import com.smarttransparentmess.erp.ui.members.MemberManagementScreen
+import com.smarttransparentmess.erp.ui.erp.ExtendedErpScreen
 import com.smarttransparentmess.erp.ui.operations.OperationsScreen
 import com.smarttransparentmess.erp.ui.profile.AppInformationScreen
 import com.smarttransparentmess.erp.ui.profile.ProfileScreen
@@ -64,6 +68,7 @@ fun SmartMessApp(
     adminFinanceViewModel: AdminFinanceViewModel,
     operationsViewModel: OperationsViewModel,
     memberManagementViewModel: MemberManagementViewModel,
+    extendedErpViewModel: ExtendedErpViewModel,
     versionName: String,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -71,6 +76,7 @@ fun SmartMessApp(
     val adminFinanceUiState by adminFinanceViewModel.uiState.collectAsState()
     val operationsUiState by operationsViewModel.uiState.collectAsState()
     val memberManagementUiState by memberManagementViewModel.uiState.collectAsState()
+    val extendedErpUiState by extendedErpViewModel.uiState.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val recoveryPending by viewModel.recoveryPending.collectAsState()
@@ -102,6 +108,7 @@ fun SmartMessApp(
                 financeViewModel.loadForUser(state.profile.userId)
                 val canManage = state.profile.role == AppRole.ADMIN || state.profile.role == AppRole.MAIN_ADMIN
                 operationsViewModel.loadForUser(state.profile.userId, canManage)
+                extendedErpViewModel.loadForUser(state.profile.userId)
                 if (canManage) {
                     adminFinanceViewModel.loadForUser(state.profile.userId)
                     memberManagementViewModel.loadForUser(state.profile.userId, canManage = true)
@@ -115,6 +122,7 @@ fun SmartMessApp(
                 adminFinanceViewModel.clear()
                 operationsViewModel.clear()
                 memberManagementViewModel.clear()
+                extendedErpViewModel.clear()
             }
         }
     }
@@ -192,6 +200,8 @@ fun SmartMessApp(
                     operationsViewModel = operationsViewModel,
                     memberManagementState = memberManagementUiState,
                     memberManagementViewModel = memberManagementViewModel,
+                    extendedErpState = extendedErpUiState,
+                    extendedErpViewModel = extendedErpViewModel,
                     selectedTab = selectedTab,
                     isBusy = isBusy,
                     notice = notice,
@@ -249,6 +259,8 @@ private fun AuthorizedShell(
     operationsViewModel: OperationsViewModel,
     memberManagementState: MemberManagementUiState,
     memberManagementViewModel: MemberManagementViewModel,
+    extendedErpState: ExtendedErpUiState,
+    extendedErpViewModel: ExtendedErpViewModel,
     selectedTab: Int,
     isBusy: Boolean,
     notice: com.smarttransparentmess.erp.presentation.AuthNotice?,
@@ -262,9 +274,10 @@ private fun AuthorizedShell(
     val canManageFinance = profile.role == AppRole.ADMIN || profile.role == AppRole.MAIN_ADMIN
     val membersTab = 2
     val operationsTab = if (canManageFinance) 3 else 1
-    val profileTab = if (canManageFinance) 4 else 2
+    val moreTab = if (canManageFinance) 4 else 2
+    val profileTab = if (canManageFinance) 5 else 3
     LaunchedEffect(canManageFinance) {
-        if (selectedTab > profileTab || (!canManageFinance && selectedTab == 2)) onTabSelected(0)
+        if (selectedTab > profileTab) onTabSelected(0)
     }
     Scaffold(
         bottomBar = {
@@ -313,6 +326,17 @@ private fun AuthorizedShell(
                     label = { Text(stringResource(R.string.operations_short)) },
                 )
                 NavigationBarItem(
+                    selected = selectedTab == moreTab,
+                    onClick = { onTabSelected(moreTab) },
+                    icon = {
+                        Icon(
+                            Icons.Default.MoreHoriz,
+                            contentDescription = stringResource(R.string.extended_title),
+                        )
+                    },
+                    label = { Text(stringResource(R.string.more_tab)) },
+                )
+                NavigationBarItem(
                     selected = selectedTab == profileTab,
                     onClick = { onTabSelected(profileTab) },
                     icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile)) },
@@ -348,6 +372,12 @@ private fun AuthorizedShell(
                     adminFinanceViewModel.refresh()
                     operationsViewModel.refresh()
                 },
+                modifier = Modifier.padding(contentPadding),
+            )
+            selectedTab == moreTab -> ExtendedErpScreen(
+                state = extendedErpState,
+                viewModel = extendedErpViewModel,
+                isAdmin = canManageFinance,
                 modifier = Modifier.padding(contentPadding),
             )
             selectedTab == operationsTab -> OperationsScreen(
