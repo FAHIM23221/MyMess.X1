@@ -62,6 +62,87 @@ class SupabaseExtendedErpRepository(
                     putNullable("target_due_date", fields["due_date"])
                 },
             )
+            ErpAction.SET_MEAL_SCHEDULE -> client.postgrest.rpc(
+                "set_meal_schedule",
+                buildJsonObject {
+                    put("target_user_id", JsonPrimitive(fields.getValue("member_id")))
+                    put("target_start", JsonPrimitive(fields.getValue("starts_on")))
+                    putNullable("target_end", fields["ends_on"])
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    putNullable("target_reason", fields["reason"])
+                },
+            )
+            ErpAction.RECORD_RICE_PURCHASE -> client.postgrest.rpc(
+                "record_rice_purchase",
+                buildJsonObject {
+                    put("target_quantity_grams", JsonPrimitive(fields.getValue("quantity_grams").toInt()))
+                    put("target_unit", JsonPrimitive(fields.getValue("unit")))
+                    put("target_unit_price_minor", JsonPrimitive(fields.getValue("unit_price_minor").toLong()))
+                    put("target_vendor", JsonPrimitive(fields.getValue("vendor")))
+                    putNullable("target_receipt_reference", fields["receipt_reference"])
+                    put("target_purchased_on", JsonPrimitive(fields.getValue("purchased_on")))
+                    put("client_request_id", JsonPrimitive(requestId))
+                },
+            )
+            ErpAction.REVERSE_RICE_MOVEMENT -> client.postgrest.rpc(
+                "reverse_rice_movement",
+                buildJsonObject {
+                    put("target_movement_id", JsonPrimitive(fields.getValue("movement_id")))
+                    put("target_reason", JsonPrimitive(fields.getValue("reason")))
+                },
+            )
+            ErpAction.UPDATE_EXPENSE_DETAILS -> client.postgrest.rpc(
+                "update_expense_details",
+                buildJsonObject {
+                    put("target_expense_id", JsonPrimitive(fields.getValue("expense_id")))
+                    putNullable("target_vendor", fields["vendor"])
+                    putNullable("target_receipt_reference", fields["receipt_reference"])
+                },
+            )
+            ErpAction.REVIEW_EXPENSE -> client.postgrest.rpc(
+                "review_expense",
+                buildJsonObject {
+                    put("target_expense_id", JsonPrimitive(fields.getValue("expense_id")))
+                    put("target_status", JsonPrimitive(fields.getValue("status")))
+                    putNullable("target_reason", fields["reason"])
+                },
+            )
+            ErpAction.UPSERT_CASH_ACCOUNT -> client.postgrest.rpc(
+                "upsert_cash_account",
+                buildJsonObject {
+                    put("target_name", JsonPrimitive(fields.getValue("name")))
+                    put("target_kind", JsonPrimitive(fields.getValue("kind")))
+                    put("target_opening_balance_minor", JsonPrimitive(fields.getValue("opening_balance_minor").toLong()))
+                },
+            )
+            ErpAction.ASSIGN_CASH_ENTRY_ACCOUNT -> client.postgrest.rpc(
+                "assign_cash_entry_account",
+                buildJsonObject {
+                    put("target_cash_book_entry_id", JsonPrimitive(fields.getValue("cash_book_entry_id")))
+                    put("target_account_id", JsonPrimitive(fields.getValue("account_id")))
+                },
+            )
+            ErpAction.CLOSE_CASH_PERIOD -> client.postgrest.rpc(
+                "close_cash_period",
+                buildJsonObject {
+                    put("target_start", JsonPrimitive(fields.getValue("starts_on")))
+                    put("target_end", JsonPrimitive(fields.getValue("ends_on")))
+                    put("target_opening_balance_minor", JsonPrimitive(fields.getValue("opening_balance_minor").toLong()))
+                    putNullable("target_note", fields["note"])
+                },
+            )
+            ErpAction.UPDATE_MESS_SETTINGS -> client.postgrest.rpc(
+                "update_mess_settings",
+                buildJsonObject {
+                    put("target_locale", JsonPrimitive(fields.getValue("locale")))
+                    put("target_low_rice_threshold_grams", JsonPrimitive(fields.getValue("low_rice_threshold_grams").toInt()))
+                    put("target_meal_reminders_enabled", JsonPrimitive(fields.getValue("meal_reminders_enabled").toBooleanStrict()))
+                },
+            )
+            ErpAction.MARK_NOTIFICATION_READ -> client.postgrest.rpc(
+                "mark_notification_read",
+                buildJsonObject { put("target_notification_id", JsonPrimitive(fields.getValue("notification_id"))) },
+            )
         }
     }
 

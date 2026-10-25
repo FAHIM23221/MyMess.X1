@@ -378,6 +378,7 @@ private fun AuthorizedShell(
                 state = extendedErpState,
                 viewModel = extendedErpViewModel,
                 isAdmin = canManageFinance,
+                currentUserId = profile.userId,
                 modifier = Modifier.padding(contentPadding),
             )
             selectedTab == operationsTab -> OperationsScreen(
