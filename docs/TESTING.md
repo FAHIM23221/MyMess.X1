@@ -9,9 +9,12 @@
 - `MoneyTest.kt`: exact BDT minor-unit parsing/formatting, excess precision, invalid input, and full `Long` formatting boundaries.
 - `FinanceModelsTest.kt`: opening due, partial payment, overpayment/advance, credit offset, reversal visibility, and overflow rejection.
 - `FinanceDtosTest.kt`: exact backend/domain balance consistency, unknown enum rejection, and payment/receipt mapping.
-- `AdminFinanceCalculatorTest.kt`: per-member due/advance separation, reversed-payment exclusion, adjustment totals, missing periods, and aggregate overflow.
+- `AdminFinanceCalculatorTest.kt`: per-member due/advance separation, zero/historical member balances, reversed-payment exclusion, adjustment totals, missing periods, and aggregate overflow.
 - `FinanceEntryValidatorTest.kt`: Dhaka payment-date conversion, future-date rejection, amount limits, optional text, and charge/adjustment/period validation.
+- `OperationsCalculatorTest.kt`: reversed-row exclusion, exact rice/cash totals, half-meal formatting, and overflow rejection.
+- `OperationsValidationTest.kt`: half-meal increments, whole-gram bounds, exact expense minor units, references, future dates, descriptions, and reversal reasons.
 - `supabase/tests/phase2_smoke_transaction.sql`: rollback-only RPC, duplicate, reversal, closed-period, due/advance carry-forward, expanded method/category, future-date, and authorization smoke coverage.
+- `supabase/tests/phase3_smoke_transaction.sql`: rollback-only meal/rice/expense duplicates and reversals, stock guard, four cash-book triggers, direct-write denial, and authorization smoke coverage.
 - `scripts/verify_project.py`: dependency-free XML/resource checks, bilingual parity, selected SQL invariants, public-config validation, workflow presence, and privileged-key guard.
 - `scripts/verify_built_config.py`: reads generated debug `BuildConfig` without printing values and fails unless a valid HTTPS Supabase URL and publishable key were actually compiled.
 - `.github/workflows/android-debug.yml`: runs static checks, `testDebugUnitTest`, `assembleDebug`, and built-config verification before uploading only the debug APK artifact.
@@ -25,7 +28,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. This sandbox lacks a complete local Android/Gradle runtime and cannot reliably download signed artifacts, so Android build results are taken only from observed GitHub Actions runs. Current code commit `42c196cac4e21ab1282094624b0baa922faf0c6f` passed static checks, all JVM tests, `assembleDebug`, generated-`BuildConfig` verification, and artifact upload in run `40159571594`; artifact `12586620126` is version `0.3.0-phase2` / versionCode `4`. Phase 2 migrations, grant/RLS/constraint inspection, and the expanded rollback-only SQL smoke transaction have also run. Real-JWT API and installed-device tests remain open.
+The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. This sandbox lacks a complete local Android/Gradle runtime and cannot reliably download signed artifacts, so Android build results are taken only from observed GitHub Actions runs. Phase 3 implementation commit `6be5cd91969570d56cd3355003b7738027180fd1` passed static checks, all JVM tests, `assembleDebug`, generated-`BuildConfig` verification, and artifact upload in run `40161969261`. Six migrations, grant/RLS/trigger inspection, and both rollback-only SQL smoke transactions have run. Current source is version `0.4.0-phase3` / versionCode `5`; use the artifact from the latest green current-head run rather than an older versioned artifact. Real-JWT API and installed-device tests remain open.
 
 ## Supabase integration test matrix before real data
 
@@ -59,5 +62,14 @@ Use separate test Auth accounts and a disposable project. Test both allowed and 
 | Carry-forward is repeated for the same member/source/target | Rejected by the partial unique index |
 | Payment exceeds charges/opening due | Advance credit, not a negative outstanding due |
 | Admin targets another mess or suspended identity calls RPC | Rejected by server-side active same-mess checks |
+| Suspended Member selects any Phase 2 ledger/period row | No rows; every Member/Admin SELECT branch requires an active profile |
+| Member selects meal rows | Only own active same-mess entries/reversals; no other member's meals |
+| Member selects rice/expense/cash-book rows | Same-mess transparency rows only; no cross-mess rows |
+| Member or anonymous identity calls an operations mutation RPC | Denied; no operational/audit/cash-book mutation |
+| Admin repeats a meal/rice/expense client request ID | Unique violation; no duplicate entry or cash event |
+| Admin records rice stock-out above current stock | Rejected under the per-mess transaction lock |
+| Meal or expense is reversed twice | First adds a reasoned reversal; second rejected |
+| Client inserts/updates/deletes a cash-book row directly | Denied by grants/RLS; only source triggers create rows |
+| Existing Finance payment or reversal is recorded | Exactly one corresponding cash-book event is created |
 
 Also test password recovery redirect, PKCE callback, refresh after process restart, local and remote sign-out, and logs after a deliberately invalid Auth request. On Android, verify valid and reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permission grants, and that no arbitrary cache file is exposed through the receipt `FileProvider`. See `SECURITY.md` for unresolved token-log verification and `PHASE2_FINANCE.md` for the executed rollback-only smoke scope.

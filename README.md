@@ -2,7 +2,7 @@
 
 A native Android ERP using Kotlin, Jetpack Compose/Material 3, MVVM/repositories, Coroutines/Flow, Supabase Auth/Postgres, and server-side row-level security (RLS). It is not a web wrapper.
 
-> **Verified baseline:** main commit `5aaf473f733c412aaf22113b71531a7f7ad84a01` passed Android workflow run `40153010838`, including JVM tests, debug build, and APK upload. Phase 1 Auth/profile/RLS and singleton Main Admin bootstrap are also applied and verified on the new Supabase project. Phase 2 commit `35119bb131a5df5cb41d3079850c80a8c30112a0` also passed run `40157238078`, including its new finance JVM tests and debug build. Configured commit `e01ffb7d8a11d8c7a0117c36606ad07af04213f8` passed run `40157837474`, including generated-`BuildConfig` verification and artifact upload. See [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for exact current and blocked states.
+> **Verified source baseline:** Phase 3 implementation commit `6be5cd91969570d56cd3355003b7738027180fd1` passed Android workflow run `40161969261`, including static/security checks, JVM tests, debug build, generated-public-config verification, and APK upload. Six additive migrations are applied to the reviewed Supabase project, and the Phase 2/Phase 3 rollback-only smoke transactions passed. Real-JWT and installed-device workflows remain separate open verification. See [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) for exact current and blocked states.
 
 ## Implemented source scope
 
@@ -22,9 +22,19 @@ A native Android ERP using Kotlin, Jetpack Compose/Material 3, MVVM/repositories
 - Integer BDT minor-unit arithmetic with opening-due, partial-payment, overpayment/advance, credit, and overflow tests.
 - Duplicate-request protection, closed-period rejection, receipt voiding, and correction history.
 - Member dashboard backed by `security_invoker` summary/receipt views; empty states are shown instead of demo balances.
-- Remote schema/grant inspection and a rollback-only RPC/calculation smoke script. Details: [`docs/PHASE2_FINANCE.md`](docs/PHASE2_FINANCE.md).
+- Role-gated Admin/Main Admin workspace with the original Overview, Payments, Charges, and Periods tabs, plus member-wise due/advance monitoring and real payment/charge filtering.
+- PDF receipt download/share and a rollback-only RPC/calculation smoke script. Details: [`docs/PHASE2_FINANCE.md`](docs/PHASE2_FINANCE.md).
 
-Admin finance entry UI, meals/rice/fines/expenses/cash book, duties/notices, messaging, reports/backup, and the remaining Phases 3–6 workflows are not yet complete. No fake authentication, sample ledger, or demo financial figures are used.
+### Phase 3 operations vertical slice
+
+- Admin/Main Admin meal entry with exact half-meal units, active-member selection, date/slot validation, duplicate-request protection, and reasoned reversal history.
+- Append-only rice stock-in/stock-out movements in whole grams with server-side insufficient-stock protection.
+- Expense entry and reasoned reversal with exact BDT minor units and duplicate-request protection.
+- A system-generated cash book linking payments, payment reversals, expenses, and expense reversals; existing payment events were backfilled without duplicate source IDs.
+- Member read access to their own meals and same-mess rice/expense/cash-book transparency; mutation controls are Admin/Main Admin only and protected again by RPC authorization.
+- Operations navigation, English/Bengali Material 3 UI, loading/error/empty/success states, JVM tests, and a rollback-only database smoke transaction. Details: [`docs/PHASE3_OPERATIONS.md`](docs/PHASE3_OPERATIONS.md).
+
+Fines, automatic meal-to-charge billing, linked rice-correction reversal, duties/notices, messaging, general reports/backup, and the remaining Phases 3–6 workflows are not complete. No fake authentication, sample ledger, demo financial figures, or placeholder mutation controls are used.
 
 ## Quick start
 
@@ -40,7 +50,7 @@ The active project's public Android configuration is intentionally bundled in `c
 
    The debug APK output is `app/build/outputs/apk/debug/app-debug.apk`.
 2. Or run **Android debug APK** from GitHub Actions and download the newly uploaded artifact. Read [`docs/GITHUB_PHONE_GUIDE.md`](docs/GITHUB_PHONE_GUIDE.md) for phone steps.
-3. To use another Supabase project, follow [`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md), then override the bundled values through `local.properties` or nonblank Actions Variables. For a fresh backend, review/apply migrations `0001`, `0002`, and `0003` in order and perform the one-time Main Admin bootstrap once.
+3. To use another Supabase project, follow [`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md), then override the bundled values through `local.properties` or nonblank Actions Variables. For a fresh backend, review/apply migrations `0001` through `0006` in order and perform the one-time Main Admin bootstrap once.
 
 A build with no valid public or override configuration deliberately opens **Setup required**. Older artifacts without the bundled public configuration show that screen even though the backend exists.
 
@@ -75,7 +85,7 @@ scripts/             Dependency-free static resource/security contract checks
 - The Android client contains only public Supabase configuration. A Gradle guard rejects recognizable privileged service-role keys before creating `BuildConfig`.
 - UI role checks are not authorization. Protected tables use RLS; role, status, Main Admin, and finance mutations are server-side and audited.
 - `MAIN_ADMIN` is derived from a protected one-row assignment, not writable through profile updates. Assignment deletion and unsafe suspension are blocked.
-- Finance tables/views are SELECT-only for authenticated clients. All finance writes require an active same-mess Admin/Main Admin RPC check. Original payments and reversals are preserved.
+- Finance and operations tables/views are SELECT-only for authenticated clients. All mutations require an active same-mess Admin/Main Admin RPC check. Original payments, operational entries, and reversals are preserved; cash-book rows are trigger-generated rather than client-writable.
 - The app disables Android backup and stores Auth session/PKCE data encrypted with an Android Keystore-held key.
 - SDK logging is `LogLevel.NONE` because the pinned SDK source includes an error path that may interpolate an access token. Installed-app log verification remains open; see [`docs/SECURITY.md`](docs/SECURITY.md).
 

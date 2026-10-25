@@ -1,4 +1,4 @@
-# Supabase setup — Phases 1–2
+# Supabase setup — Phases 1–3 vertical slices
 
 This guide is for a new Supabase project or an optional project override. The repository bundles only the active project's public Android URL and publishable key in `config/supabase.public.properties`; it contains no privileged backend credential. That public configuration is sufficient for the app to authenticate against the already migrated active project.
 
@@ -23,8 +23,10 @@ For a fresh project, open **SQL Editor**, review each complete file, and apply t
 2. `supabase/migrations/0002_phase2_billing_payments.sql` — additive finance ledger, member views, and audited finance RPCs.
 3. `supabase/migrations/0003_phase2_view_grants.sql` — required SELECT-only tightening for Supabase's default view grants.
 4. `supabase/migrations/0004_phase2_admin_finance_methods.sql` — explicit wallet methods, expanded charge categories, and strengthened payment/charge RPC validation.
+5. `supabase/migrations/0005_phase2_active_read_hardening.sql` — active-profile requirement for every Phase 2 ledger/period SELECT policy.
+6. `supabase/migrations/0006_phase3_meals_rice_expenses_cashbook.sql` — operational ledgers, SELECT-only RLS/grants, audited RPCs, cash-book triggers, and payment-event backfill.
 
-These migrations are intended for a new project. On the active new project, all four were applied and inspected on 2026-10-25; do not apply them again there. If a fresh application fails, stop and review the error rather than partially editing tables or disabling RLS. Do not rerun policy/table creation as a substitute for fixing a failed migration.
+These migrations are intended for a new project. On the active new project, all six were applied and inspected on 2026-10-25; do not apply them again there. If a fresh application fails, stop and review the error rather than partially editing tables or disabling RLS. Do not rerun policy/table creation as a substitute for fixing a failed migration.
 
 ## 3. Bootstrap exactly one Main Admin
 
@@ -65,7 +67,7 @@ Blank Variables fall back to `config/supabase.public.properties`. After the buil
 - Public signup and member invitation screens are not present.
 - The database RPC `provision_member_profile` links an already-created, email-confirmed Auth user to an active Member profile when called by the active Main Admin. It is not yet wired to an Android management screen.
 - `set_profile_role`, `set_profile_status`, and `transfer_main_admin` are likewise server-side functions only; there is no role-management UI yet.
-- Phase 2 includes a read-only member finance dashboard and an Admin/Main Admin finance workspace. Real-JWT authorization and installed-device mutation/PDF tests are still required before real financial data.
-- Test with separate Member, Admin, Main Admin, suspended, cross-mess, and anonymous identities before storing any real member or financial data.
+- Phase 2 includes a read-only member finance dashboard and an Admin/Main Admin finance workspace. Phase 3 adds role-gated meal/rice/expense/cash-book Operations; neither slice has completed real-JWT or installed-device verification.
+- Test with separate Member, Admin, Main Admin, suspended, cross-mess, and anonymous identities before storing any real member, operational, or financial data.
 
 See [`SECURITY.md`](SECURITY.md) for the current open security verification items and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the authorization model.

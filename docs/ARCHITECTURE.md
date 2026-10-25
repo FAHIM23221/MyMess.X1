@@ -1,56 +1,73 @@
-# Architecture — Phases 1–2
+# Architecture — Phases 1–3 vertical slices
 
 ## Scope and data flow
 
 ```text
-Jetpack Compose screens
+Jetpack Compose / Material 3 screens
         │ user actions / StateFlow state
         ▼
-AuthViewModel / FinanceViewModel ── validate input and gate UI states
-        │                     │
-        ▼                     ▼
-SupabaseAuthRepository   SupabaseMemberProfileRepository / SupabaseFinanceRepository
-        │                     │
-        └── supabase-kt Auth / PostgREST client ── HTTPS ── Supabase
-                                                              │
-                                      Auth + Postgres RLS / RPC / audit log
+AuthViewModel / FinanceViewModel / AdminFinanceViewModel / OperationsViewModel
+        │ typed validation, role-gated navigation, loading/error/success state
+        ▼
+Auth / Profile / Finance / AdminFinance / Operations repositories
+        │ DTO mapping; no privileged client credential
+        └── supabase-kt Auth + PostgREST ── HTTPS ── Supabase
+                                                         │
+                                  Auth + Postgres grants / RLS / RPC / triggers / audit
 ```
 
-The app is Android-only. `MainActivity` creates the application container, handles the configured Auth deep link, and hosts Compose. `AuthViewModel` is the presentation state machine; repositories isolate the Supabase SDK; DTOs map the `my_profile` view to domain models. Unknown role/status values and profile/session identity mismatches fail closed.
+The app is Android-only. `MainActivity` creates the application container, handles the configured Auth deep link, and hosts Compose. Repositories isolate Supabase SDK calls; domain models use exact integer units. Unknown role/status values and profile/session identity mismatches fail closed. UI role checks are navigation aids, never authorization.
 
 ## Authentication and session flow
 
 1. Supabase Auth issues an email/password session. Public sign-up is not offered in the app.
 2. The SDK uses PKCE and the custom callback `smarttransparentmess://auth`.
-3. `AndroidEncryptedAuthStorage` implements the SDK session and PKCE-verifier storage contracts. Values are AES-GCM encrypted in app-private preferences with an AES key held by Android Keystore. Android backup is disabled so a restored encrypted blob cannot be used without its key.
-4. The app fetches `public.my_profile` and checks that `user_id` matches the Auth session and `account_status` is `ACTIVE` before showing a dashboard.
-5. Sign-out attempts Supabase session revocation and clears local session storage if the network operation fails. A non-confirmed server sign-out is surfaced to the user.
+3. `AndroidEncryptedAuthStorage` implements session and PKCE-verifier storage with AES-GCM and an Android Keystore-held key. Android backup is disabled.
+4. The app fetches `public.my_profile`, requires the Auth user ID to match, and requires `account_status = ACTIVE` before showing a dashboard.
+5. Sign-out attempts server revocation and clears local session state if the network operation fails. An unconfirmed remote sign-out is surfaced rather than hidden.
 
-The app never stores a user's password. Password-reset emails are generic to avoid disclosing whether an address exists. Set the Supabase redirect allowlist to the custom callback before testing recovery.
+The app never stores a user's password. Password-reset responses are generic. SMTP delivery and installed-app deep-link behavior remain integration-test items.
 
 ## Authorization model
 
-- **MEMBER**: active profile; can read their own profile and edit only their own name and phone number.
-- **ADMIN**: manager/admin role from the profile; can read profile rows within the mess under RLS. The current Phase 1 app does not expose operational or financial management features.
-- **MAIN_ADMIN**: role derived from `main_admin_assignments`, never set through a profile update. It may call server-side profile provisioning, account-status, role, and transfer RPCs; the client does not yet expose management screens.
+- **MEMBER**: reads/updates the permitted fields of their own profile; reads their own finance summary/receipts and meal history; reads same-mess rice, expense, expense-reversal, and cash-book transparency rows. Member mutation RPC calls are denied.
+- **ADMIN**: the manager/admin profile role. The Android app exposes the Finance and Operations workspaces. Every mutation still requires the server-side active same-mess Admin check.
+- **MAIN_ADMIN**: derived from the singleton `main_admin_assignments` row, not a client-writable profile role. It has the same Android finance/operations workspace plus server-side profile/role/status/transfer capabilities. Dedicated role-management screens are not yet implemented.
 
-All protected decisions are enforced by Postgres grants, RLS, constraints, triggers, or reviewed `SECURITY DEFINER` functions with a fixed search path. The UI role is for routing/display only. The hidden seven-tap Admin entry is not a security boundary and cannot grant a role.
+Postgres grants, RLS, constraints, triggers, and reviewed `SECURITY DEFINER` functions with fixed search paths enforce the boundary. The hidden seven-tap Admin entry cannot grant a role.
 
-The one-mess Phase 1 schema uses a singleton assignment row. A deferred constraint trigger rejects a newly committed mess without one active assignment; a unique row design prevents multiple assignments; deletion is blocked; the assigned Main Admin cannot be suspended. The `transfer_main_admin` RPC locks and updates the assignment in one transaction, demotes the old Main Admin to Admin, requires an active target profile, and writes an audit entry. Only the active current Main Admin may invoke it.
-
-`set_profile_role`, `set_profile_status`, and `provision_member_profile` also validate the active Main Admin on the server and write audit rows. The target Auth user must already exist and have a confirmed email before a profile can be provisioned. Auth account creation itself remains an Auth Dashboard/operator task; no service-role credential is put in the app.
-
-For a lost/compromised Main Admin, the separate `recover_main_admin_owner_only` database function is not exposed to any PostgREST role, including `service_role`. Its SQL template requires an expected old user ID, an active confirmed same-mess target, a reason, and an external approval reference. It transfers the singleton assignment, suspends the old account, and records a `PROJECT_OWNER_RECOVERY` audit actor. It is an operator recovery path, not an app feature, and still requires independent review and integration testing.
+The one-mess foundation prevents multiple Main Admin assignments, assignment deletion, and suspension of the assigned Main Admin. Audited transfer and owner-only recovery remain separate operator workflows; recovery is revoked from app/API roles.
 
 ## Phase 1–2 data surface
 
-The initial migration defines `messes`, `profiles`, `main_admin_assignments`, and `audit_logs`, plus helper functions and `my_profile`. Authenticated clients receive narrow table grants: profile update is limited to `full_name` and `phone_number`; role, status, manager flag, and Main Admin assignment are not client-writable.
+The foundation defines `messes`, `profiles`, `main_admin_assignments`, and `audit_logs`, plus helpers and `my_profile`. Profile update is limited to `full_name` and `phone_number`.
 
-Phase 2 adds `billing_periods`, `charges`, `billing_adjustments`, `payments`, `receipts`, and `payment_reversals`. Authenticated clients receive SELECT-only ledger/view grants. Mutations go through active same-mess Admin/Main Admin RPCs, which write audit entries. `FinanceViewModel` loads `my_financial_summary` and `my_payment_receipts`; both are `security_invoker` views restricted by `auth.uid()` and underlying RLS. The member UI computes and cross-checks due/advance using integer minor units. The SQL formula and verification limits are in [`PHASE2_FINANCE.md`](PHASE2_FINANCE.md).
+Phase 2 adds `billing_periods`, `charges`, `billing_adjustments`, `payments`, `receipts`, and `payment_reversals`. Authenticated clients receive SELECT-only ledger/view grants. Mutations use active same-mess Admin/Main Admin RPCs and write audit entries. The `0005` hardening migration makes every Phase 2 member/admin SELECT policy require an active profile as well as the same-mess/member predicate.
 
-## Open integration work
+`FinanceViewModel` loads the member's `security_invoker` summary/receipt views. `AdminFinanceViewModel` loads the Admin snapshot. `AdminFinanceCalculator` computes each member's period balance before aggregating non-negative dues and advances, so one member's advance cannot erase another's due. The UI retains all four original tabs and adds member-wise balances plus payment/charge filters.
 
-- Exercise PostgREST with real anonymous, Member, Admin, suspended, and cross-mess JWTs; the owner-session rollback smoke test is not enough.
-- Configure and test email delivery and installed-app Auth deep links on a device.
-- Add Admin finance entry UI only after reviewing RPC behavior and authorization tests.
-- Run the Phase 2 JVM tests/build in a new GitHub Actions workflow and install only the resulting artifact for device verification.
+All money is BDT integer minor units. Reversed payments remain in history but are excluded from valid-payment totals. Receipt voiding and carry-forward are compensating/audited operations, not destructive edits.
+
+## Phase 3 operations data surface
+
+`OperationsViewModel` and `SupabaseOperationsRepository` load one role-filtered snapshot from these additive tables:
+
+| Table | Purpose | Client access |
+| --- | --- | --- |
+| `meal_entries` / `meal_reversals` | Half-meal-unit member entries and one reasoned reversal per entry | Active Member: own rows; Admin: same mess |
+| `rice_movements` | Append-only whole-gram stock-in/stock-out | Active same-mess read; Admin RPC write |
+| `expenses` / `expense_reversals` | BDT-minor-unit expenses and one reasoned reversal | Active same-mess read; Admin RPC write |
+| `cash_book_entries` | Trigger-generated inflow/outflow events | Active same-mess SELECT only |
+
+The five mutation RPCs are `record_meal_entry`, `reverse_meal_entry`, `record_rice_movement`, `record_expense`, and `reverse_expense`. Meal, rice, and expense creation accepts a per-mess unique client request ID. Rice stock-out is checked under a per-mess advisory transaction lock. Reversal uniqueness and all check constraints are enforced again by Postgres.
+
+Cash-book triggers run after payment, payment reversal, expense, and expense-reversal inserts. `(source_type, source_id)` is unique. Migration `0006` backfills existing payment/payment-reversal events with conflict protection; it does not invent opening balances or meal charges.
+
+Meal and expense reversals retain the original row and add a separate record. Rice corrections currently require an offsetting stock movement with a clear note; a linked rice-reversal workflow is not yet implemented. Meal entries do **not** automatically create billing charges, and fines are a separate incomplete Phase 3 item.
+
+## Open integration and scale work
+
+- Exercise PostgREST with real anonymous, Member, Admin, suspended, and cross-mess JWTs; injected-claims rollback smoke is not enough.
+- Verify installed-app Auth, Finance, Operations, PDF, Bengali rendering, and process-restoration flows on a device.
+- Add paging/incremental queries before large operational histories; the current vertical slice loads the readable snapshot without claiming large-data readiness.
+- Add fines, explicit meal-billing rules, linked rice correction, duties/notices, messaging, general reports/backup, and broader audit/settings screens without weakening existing RLS.

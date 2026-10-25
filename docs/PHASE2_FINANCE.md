@@ -22,7 +22,8 @@ Phase 2 now includes the member finance dashboard and an Admin/Main Admin financ
 - Member dashboard with loading, error, empty, due/advance, and reversed-receipt states.
 - Role-gated Admin/Main Admin finance tab; members do not receive the Admin navigation item.
 - Overview, payment/receipt, charge/adjustment, and billing-period/carry-forward sections.
-- Per-member overview aggregation: one member's advance does not cancel another member's outstanding due.
+- Per-member overview aggregation and member-wise balance list: one member's advance does not cancel another member's outstanding due; zero-balance and historical members remain visible.
+- Payment search plus method/status filters and charge search plus category filtering operate on the loaded server snapshot.
 - Bilingual English/Bengali labels and validation feedback.
 - Duplicate-submit prevention and stable request-ID reuse after a failed mutation attempt.
 - Post-mutation snapshot refresh; a refresh failure is shown separately and is never hidden by a success notice.
@@ -72,10 +73,11 @@ On 2026-10-25, the following migrations were applied only to project `iwoiwgkaev
 | `20261025030611_phase2_billing_payments` | `0002_phase2_billing_payments.sql` |
 | `20261025030642_phase2_view_grants` | `0003_phase2_view_grants.sql` |
 | `20261025033247_phase2_admin_finance_methods` | `0004_phase2_admin_finance_methods.sql` |
+| `20261025041631_phase2_active_read_hardening` | `0005_phase2_active_read_hardening.sql` |
 
 Observed backend checks after the final rollback smoke test:
 
-- Six ledger tables have RLS enabled and exactly one SELECT policy each for `authenticated`.
+- Six ledger tables have RLS enabled and exactly one SELECT policy each for `authenticated`; after `0005`, every policy also requires `is_active_user()`.
 - Both member views have `security_invoker=true` and authenticated SELECT-only grants.
 - Anonymous EXECUTE is false for all seven finance RPCs; authenticated EXECUTE is true, with internal active-Admin/mess authorization still required.
 - Live payment constraints accept `BKASH` and `NAGAD`; live charge constraints accept the expanded category set.
@@ -86,7 +88,7 @@ Observed backend checks after the final rollback smoke test:
 
 ## Android verification result
 
-For code commit `42c196cac4e21ab1282094624b0baa922faf0c6f`, GitHub Actions run `40159571594` completed successfully:
+For Phase 3-era code commit `6be5cd91969570d56cd3355003b7738027180fd1`, GitHub Actions run `40161969261` completed successfully (including the Phase 2 finance source/tests):
 
 - static XML/resource/security contract checks;
 - all JVM unit tests, including Admin overview separation and finance-entry validation;
