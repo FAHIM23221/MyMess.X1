@@ -9,6 +9,7 @@ import com.smarttransparentmess.erp.presentation.AdminFinanceViewModel
 import com.smarttransparentmess.erp.presentation.AuthViewModel
 import com.smarttransparentmess.erp.presentation.FinanceViewModel
 import com.smarttransparentmess.erp.presentation.OperationsViewModel
+import com.smarttransparentmess.erp.presentation.MemberManagementViewModel
 import com.smarttransparentmess.erp.ui.SmartMessApp
 import com.smarttransparentmess.erp.ui.theme.SmartMessTheme
 
@@ -44,12 +45,18 @@ class MainActivity : ComponentActivity() {
                     repository = appContainer.operationsRepository,
                 ),
             )
+            val memberManagementViewModel: MemberManagementViewModel = viewModel(
+                factory = MemberManagementViewModel.Factory(
+                    repository = appContainer.memberManagementRepository,
+                ),
+            )
             SmartMessTheme {
                 SmartMessApp(
                     viewModel = authViewModel,
                     financeViewModel = financeViewModel,
                     adminFinanceViewModel = adminFinanceViewModel,
                     operationsViewModel = operationsViewModel,
+                    memberManagementViewModel = memberManagementViewModel,
                     versionName = BuildConfig.VERSION_NAME,
                 )
             }

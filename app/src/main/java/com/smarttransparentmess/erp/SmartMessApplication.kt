@@ -6,6 +6,7 @@ import com.smarttransparentmess.erp.data.auth.SupabaseAuthRepository
 import com.smarttransparentmess.erp.data.finance.SupabaseAdminFinanceRepository
 import com.smarttransparentmess.erp.data.finance.SupabaseFinanceRepository
 import com.smarttransparentmess.erp.data.operations.SupabaseOperationsRepository
+import com.smarttransparentmess.erp.data.members.SupabaseMemberManagementRepository
 import com.smarttransparentmess.erp.data.profile.SupabaseMemberProfileRepository
 import com.smarttransparentmess.erp.data.security.SupabaseClientProvider
 import io.github.jan.supabase.SupabaseClient
@@ -39,6 +40,7 @@ class AppContainer(application: Application) {
     val financeRepository = supabaseClient?.let(::SupabaseFinanceRepository)
     val adminFinanceRepository = supabaseClient?.let(::SupabaseAdminFinanceRepository)
     val operationsRepository = supabaseClient?.let(::SupabaseOperationsRepository)
+    val memberManagementRepository = supabaseClient?.let(::SupabaseMemberManagementRepository)
 
     private val _passwordRecoveryPending = MutableStateFlow(false)
     val passwordRecoveryPending: StateFlow<Boolean> = _passwordRecoveryPending.asStateFlow()
