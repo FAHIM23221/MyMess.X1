@@ -10,6 +10,8 @@
 - `ExtendedErpOperationsValidationTest.kt`: schedules, rice purchases, cash accounts/locks and mess settings validation.
 - `ExtendedErpDutiesValidationTest.kt`: duty swap and scheduled-notice validation.
 - `ExtendedErpCommunityValidationTest.kt`: private-message recipient, moderation/suggestion reason and complaint-response validation.
+- `ExtendedErpNotificationValidationTest.kt`: direct/all/Admin audience validation, payload bounds and removal of stale hidden recipient IDs from effective retry payloads.
+- `ExtendedErpDtosTest.kt`: Admin notification batch-history DTO/domain mapping.
 - `supabase/tests/phase2_smoke_transaction.sql`: rollback-only finance RPC, duplicate, reversal, closed-period, carry-forward and authorization checks.
 - `supabase/tests/phase3_smoke_transaction.sql`: rollback-only meal/rice/expense/cash-book duplicate, reversal, stock, trigger and authorization checks.
 - `supabase/tests/phase_a_member_management_smoke.sql`: rollback-only member visibility, invitation/idempotency, duplicate/capacity, lifecycle, audit, direct-write and missing-profile checks.
@@ -18,6 +20,8 @@
 - `supabase/tests/phase_c_operations_extensions_smoke.sql`: schedules, rice metadata/reversals, alerts, expense approvals, cash source-date locks, settings and notification-write checks.
 - `supabase/tests/phase_d_duties_notices_smoke.sql`: duty/request/rotation/notice workflows, scheduled-due publication, read state, notification deduplication and privilege checks.
 - `supabase/tests/phase_e_community_smoke.sql`: group message idempotency/read/report/review/moderation, self-private denial, separated suggestion identity/publication, long complaint/notice payloads, direct-write and missing-profile checks.
+- `supabase/tests/phase_admin_member_notifications_smoke.sql`: rollback-only direct/all/Admin fan-out, stable idempotency, changed-payload rejection, Main Admin inclusion, audit/history, invalid-recipient/missing-profile denial and direct-write denial.
+- `supabase/tests/phase_f_reports_backup_smoke.sql`: rollback-only monthly report scope/range, independent `extensions.digest` SHA-256 verification, logical-only flags, audit/current snapshot inclusion, privileged-marker absence and missing-profile denial.
 - `scripts/verify_project.py`: dependency-free XML/resource checks, bilingual parity, selected SQL invariants, public-config validation, workflow presence and privileged-key guard.
 - `scripts/verify_built_config.py`: reads generated debug `BuildConfig` without printing values and fails unless a valid HTTPS Supabase URL and publishable key were compiled.
 - `.github/workflows/android-debug.yml`: runs static checks, `testDebugUnitTest`, `assembleDebug`, built-config verification and debug APK upload.
@@ -31,7 +35,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.1-phase3` / versionCode `6`; use the latest green current-head artifact, not an older phase artifact.
+The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.2-phase3` / versionCode `7`; use the latest green current-head artifact, not an older phase artifact.
 
 ## Observed exact-head Android runs
 
@@ -43,6 +47,8 @@ The static script is not a SQL parser, penetration test or proof of RLS behavior
 | `5abbb87` Phase D | `40190110513`, `40190114805` | Passed. |
 | `4f376d7` Phase E | `40190673127`, `40190677111` | Passed static checks, JVM tests, debug build and config verification. |
 | `12cbf4d` invitation hotfix | `40200572153`, `40200576638` | Passed static checks, JVM tests, debug build and config verification. |
+| `ad6b0ba` hotfix documentation | `40200974769`, `40200978038` | Passed at the exact documentation head and uploaded an artifact. |
+| `ac79a09` Admin notifications + Phase F backend | `40203387352`, `40203392928` | Passed static checks, JVM tests, debug build, config verification and artifact upload. |
 
 ## Supabase integration test matrix before real data
 
@@ -67,10 +73,14 @@ Use separate test Auth accounts and a disposable project. Test allowed and denie
 | Member creates complaint; authorized Admin responds | Own complaint plus authorized Admin response visible; audit/notification rules hold |
 | Non-Admin writes complaints/messages/suggestions/notifications directly | Denied by grants/RLS; use RPCs |
 | Admin invokes `publish_due_notices` | Due scheduled notices publish once; no automatic scheduler is implied |
+| Admin sends `MEMBER`/`ALL`/`ADMINS` notification; Member or cross-mess actor attempts it | Only active same-mess Admin/Main Admin succeeds; each intended active recipient gets one durable row and one batch audit event |
+| Same notification request is retried; hidden member selection changes under non-member audience | Same effective request ID returns the original batch without duplicate recipient rows; stale hidden selection is excluded |
+| Recipient reads an Admin notification | Only the recipient can mark their own row read; Admin history remains same-mess/admin-only; no external push is inferred |
+| Member/Main Admin requests monthly report or logical export | Role-authorized projection only; digest matches payload; `restore_supported=false`; no cross-mess/physical-restore claim |
 | Valid long notice/message/complaint payload | Source and bounded durable notification succeed without constraint failure |
 | Payment/rice/expense source is reversed twice or enters a locked period | First valid reversal/entry follows the rules; repeat/locked mutation is rejected |
 | Cash-book row is inserted/updated/deleted directly | Denied; source triggers/RPCs only |
 
 Also test password recovery redirect, PKCE callback, refresh after process restart, local/remote sign-out, invalid Auth logs, real invitation/resend/acceptance, and external delivery configuration. On Android verify valid/reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permissions, light/dark layouts, rotation/process restoration and that no arbitrary cache file is exposed through the receipt `FileProvider`.
 
-The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Real JWT/device, live Edge deployment, SMTP, FCM, backup/restore and production-release verification remain open. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
+The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Live Edge ACTIVE v2 deployment/source/JWT-flag read-back is complete, but real JWT/device invocation, SMTP, FCM, physical backup/restore and production-release verification remain open. Notification and Phase F SQL smoke uses injected claims and is not a substitute for those checks. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
