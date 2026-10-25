@@ -69,6 +69,45 @@ class AdminFinanceCalculatorTest {
     }
 
     @Test
+    fun memberBalancesIncludeZeroBalanceMembersAndKeepDueSeparateFromAdvance() {
+        val snapshot = snapshot(
+            charges = listOf(charge("charge-a", "member-a", 1_000), charge("charge-b", "member-b", 2_000)),
+            payments = listOf(payment("payment-a", "member-a", 1_500)),
+        )
+
+        val balances = AdminFinanceCalculator.calculate(snapshot, "period-1").memberBalances
+
+        assertEquals(2, balances.size)
+        assertEquals(500L, balances.single { it.memberId == "member-a" }.finance.advanceCreditMinor)
+        assertEquals(0L, balances.single { it.memberId == "member-a" }.finance.outstandingDueMinor)
+        assertEquals(2_000L, balances.single { it.memberId == "member-b" }.finance.outstandingDueMinor)
+        assertEquals(2_000L, AdminFinanceCalculator.calculate(snapshot, "period-1").outstandingDueMinor)
+        assertEquals(500L, AdminFinanceCalculator.calculate(snapshot, "period-1").advanceCreditMinor)
+    }
+
+    @Test
+    fun emptySnapshotStillProvidesPerMemberZeroBalances() {
+        val balances = AdminFinanceCalculator.calculate(snapshot(), "period-1").memberBalances
+
+        assertEquals(listOf("Member A", "Member B"), balances.map { it.memberName })
+        assertEquals(listOf(0L, 0L), balances.map { it.finance.outstandingDueMinor })
+        assertEquals(listOf(0L, 0L), balances.map { it.finance.advanceCreditMinor })
+    }
+
+    @Test
+    fun historicalMemberEntriesRemainVisibleWithoutActiveProfile() {
+        val snapshot = snapshot(
+            charges = listOf(charge("charge-c", "member-c", 750)),
+        ).copy(members = emptyList())
+
+        val overview = AdminFinanceCalculator.calculate(snapshot, "period-1")
+
+        assertEquals(0, overview.activeMembers)
+        assertEquals(listOf("member-c"), overview.memberBalances.map { it.memberId })
+        assertEquals(750L, overview.memberBalances.single().finance.outstandingDueMinor)
+    }
+
+    @Test
     fun aggregateOverflowIsNotSilentlyWrapped() {
         assertThrows(ArithmeticException::class.java) {
             Money.sum(listOf(Long.MAX_VALUE, 1L))

@@ -139,10 +139,44 @@ for fragment in (
     require(fragment in admin_finance_sql, f"Admin finance SQL contract missing: {fragment}")
 require("disable row level security" not in admin_finance_sql, "Admin finance migration must never disable RLS")
 
+active_read_sql = read("supabase/migrations/0005_phase2_active_read_hardening.sql").lower()
+require(active_read_sql.count("public.is_active_user()") == 6, "All six Phase 2 read policies must require an active profile")
+require("disable row level security" not in active_read_sql, "Read hardening must never disable RLS")
+
+phase3_sql = read("supabase/migrations/0006_phase3_meals_rice_expenses_cashbook.sql").lower()
+for fragment in (
+    "create table public.meal_entries",
+    "create table public.meal_reversals",
+    "create table public.rice_movements",
+    "create table public.expenses",
+    "create table public.expense_reversals",
+    "create table public.cash_book_entries",
+    "alter table public.cash_book_entries enable row level security",
+    "create trigger payments_cash_book",
+    "create trigger payment_reversals_cash_book",
+    "create trigger expenses_cash_book",
+    "create trigger expense_reversals_cash_book",
+    "create or replace function public.record_meal_entry(",
+    "create or replace function public.record_rice_movement(",
+    "create or replace function public.record_expense(",
+    "pg_advisory_xact_lock(hashtext(actor_mess_id::text))",
+    "unique (mess_id, client_request_id)",
+):
+    require(fragment in phase3_sql, f"Phase 3 SQL contract missing: {fragment}")
+require(phase3_sql.count("public.is_active_user()") >= 6, "Every Phase 3 read policy must require an active profile")
+require("disable row level security" not in phase3_sql, "Phase 3 must never disable RLS")
+require(not re.search(r"grant\s+(insert|update|delete)\b", phase3_sql), "Phase 3 clients must not receive direct ledger write grants")
+require("double precision" not in phase3_sql and "real," not in phase3_sql, "Phase 3 must not use floating-point money or stock")
+
 smoke_sql = read("supabase/tests/phase2_smoke_transaction.sql").lower()
 require("begin;" in smoke_sql and "rollback;" in smoke_sql, "Phase 2 smoke test must be rollback-only")
 require("duplicate payment request id was accepted" in smoke_sql, "Smoke test must cover duplicate payments")
 require("advance-credit carry-forward failed" in smoke_sql, "Smoke test must cover advance carry-forward")
+phase3_smoke_sql = read("supabase/tests/phase3_smoke_transaction.sql").lower()
+require("begin;" in phase3_smoke_sql and "rollback;" in phase3_smoke_sql, "Phase 3 smoke test must be rollback-only")
+require("direct authenticated cash-book insert was accepted" in phase3_smoke_sql, "Phase 3 smoke test must cover direct write denial")
+require("insufficient rice stock" in phase3_smoke_sql, "Phase 3 smoke test must cover rice stock guards")
+require("cash book trigger totals failed" in phase3_smoke_sql, "Phase 3 smoke test must cover all cash-book triggers")
 
 profile_dto = read("app/src/main/java/com/smarttransparentmess/erp/data/profile/ProfileDto.kt")
 update_dto = profile_dto.split("data class ProfileUpdateDto(", maxsplit=1)[-1]
@@ -180,12 +214,15 @@ file_paths = read("app/src/main/res/xml/file_paths.xml")
 require('<cache-path' in file_paths and 'path="receipts/"' in file_paths, "FileProvider must expose only generated receipt cache files")
 app_shell = read("app/src/main/java/com/smarttransparentmess/erp/ui/SmartMessApp.kt")
 require("AdminFinanceScreen" in app_shell and "canManageFinance" in app_shell, "Role-gated Admin finance navigation is missing")
+require("OperationsScreen" in app_shell and "operationsViewModel.clear()" in app_shell, "Operations navigation or session cleanup is missing")
 receipt_document = read("app/src/main/java/com/smarttransparentmess/erp/core/receipt/ReceiptDocument.kt")
 require("record.payment.receiptId" in receipt_document, "PDF receipts must include the immutable receipt record ID")
 require("receiptHash" not in receipt_document, "Do not claim a receipt hash that the backend does not provide")
 for test_path in (
     "app/src/test/java/com/smarttransparentmess/erp/domain/finance/AdminFinanceCalculatorTest.kt",
     "app/src/test/java/com/smarttransparentmess/erp/domain/validation/FinanceEntryValidatorTest.kt",
+    "app/src/test/java/com/smarttransparentmess/erp/domain/operations/OperationsCalculatorTest.kt",
+    "app/src/test/java/com/smarttransparentmess/erp/domain/validation/OperationsValidationTest.kt",
 ):
     require((ROOT / test_path).is_file(), f"Required Admin finance JVM test is missing: {test_path}")
 

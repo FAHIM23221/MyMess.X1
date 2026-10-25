@@ -43,12 +43,22 @@ fun AdminChargeSection(
     var dueDate by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var categoryName by rememberSaveable { mutableStateOf(ChargeCategory.SEAT_RENT.name) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var categoryFilterName by rememberSaveable { mutableStateOf("") }
     val category = ChargeCategory.valueOf(categoryName)
 
     var adjustmentAmount by rememberSaveable { mutableStateOf("") }
     var adjustmentReason by rememberSaveable { mutableStateOf("") }
     var adjustmentKindName by rememberSaveable { mutableStateOf(AdjustmentKind.OPENING_DUE.name) }
     val adjustmentKind = AdjustmentKind.valueOf(adjustmentKindName)
+    val categoryFilter = categoryFilterName.takeIf { it.isNotBlank() }?.let(ChargeCategory::valueOf)
+    val filteredCharges = snapshot.charges.filter { charge ->
+        val query = searchQuery.trim().lowercase()
+        (query.isEmpty() || charge.memberName.lowercase().contains(query) ||
+            charge.periodLabel.lowercase().contains(query) ||
+            charge.description.lowercase().contains(query)) &&
+            (categoryFilter == null || charge.category == categoryFilter)
+    }
 
     LaunchedEffect(state.notice) {
         when (state.notice) {
@@ -180,10 +190,32 @@ fun AdminChargeSection(
     }
 
     Text(stringResource(R.string.charge_history), style = MaterialTheme.typography.titleMedium)
-    if (snapshot.charges.isEmpty()) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = { searchQuery = it },
+        label = { Text(stringResource(R.string.search_charges)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+    SelectionField(
+        label = stringResource(R.string.category_label),
+        options = listOf<ChargeCategory?>(null) + ChargeCategory.entries,
+        selected = categoryFilter,
+        display = { option ->
+            option?.let { stringResource(it.labelRes()) } ?: stringResource(R.string.all_categories)
+        },
+        onSelected = { categoryFilterName = it?.name.orEmpty() },
+        emptyText = stringResource(R.string.all_categories),
+    )
+    Text(
+        stringResource(R.string.charge_count, filteredCharges.size),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (filteredCharges.isEmpty()) {
         Text(stringResource(R.string.no_charge_history), color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
-        snapshot.charges.forEach { charge ->
+        filteredCharges.forEach { charge ->
             FormCard(
                 title = stringResource(charge.category.labelRes()),
                 subtitle = "${charge.memberName} · ${charge.periodLabel}",

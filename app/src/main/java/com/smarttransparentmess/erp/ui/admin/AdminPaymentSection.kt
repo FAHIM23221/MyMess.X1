@@ -38,6 +38,8 @@ import com.smarttransparentmess.erp.ui.labelRes
 import java.time.LocalDate
 import java.time.ZoneId
 
+private enum class PaymentHistoryStatus { ALL, VALID, REVERSED }
+
 @Composable
 fun AdminPaymentSection(
     snapshot: AdminFinanceSnapshot,
@@ -56,10 +58,28 @@ fun AdminPaymentSection(
     var methodName by rememberSaveable { mutableStateOf(PaymentMethod.CASH.name) }
     var reference by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var methodFilterName by rememberSaveable { mutableStateOf("") }
+    var statusFilterName by rememberSaveable { mutableStateOf(PaymentHistoryStatus.ALL.name) }
     var pendingReceipt by remember { mutableStateOf<AdminPaymentReceipt?>(null) }
     var reversalTarget by remember { mutableStateOf<AdminPaymentReceipt?>(null) }
     var reversalReason by rememberSaveable { mutableStateOf("") }
     val method = PaymentMethod.valueOf(methodName)
+    val methodFilter = methodFilterName.takeIf { it.isNotBlank() }?.let(PaymentMethod::valueOf)
+    val statusFilter = PaymentHistoryStatus.valueOf(statusFilterName)
+    val filteredPayments = snapshot.payments.filter { entry ->
+        val query = searchQuery.trim().lowercase()
+        (query.isEmpty() || entry.memberName.lowercase().contains(query) ||
+            entry.payment.receiptNumber.lowercase().contains(query) ||
+            entry.payment.periodLabel.lowercase().contains(query) ||
+            entry.payment.transactionReference.orEmpty().lowercase().contains(query)) &&
+            (methodFilter == null || entry.payment.method == methodFilter) &&
+            when (statusFilter) {
+                PaymentHistoryStatus.ALL -> true
+                PaymentHistoryStatus.VALID -> entry.payment.isValid
+                PaymentHistoryStatus.REVERSED -> !entry.payment.isValid
+            }
+    }
     val receiptLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/pdf"),
     ) { uri ->
@@ -153,13 +173,50 @@ fun AdminPaymentSection(
     }
 
     Text(stringResource(R.string.payment_history), style = MaterialTheme.typography.titleMedium)
-    if (snapshot.payments.isEmpty()) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = { searchQuery = it },
+        label = { Text(stringResource(R.string.search_payments)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+    SelectionField(
+        label = stringResource(R.string.select_method),
+        options = listOf<PaymentMethod?>(null) + PaymentMethod.entries,
+        selected = methodFilter,
+        display = { option ->
+            option?.let { stringResource(it.labelRes()) } ?: stringResource(R.string.all_methods)
+        },
+        onSelected = { methodFilterName = it?.name.orEmpty() },
+        emptyText = stringResource(R.string.all_methods),
+    )
+    SelectionField(
+        label = stringResource(R.string.select_status),
+        options = PaymentHistoryStatus.entries,
+        selected = statusFilter,
+        display = {
+            stringResource(
+                when (it) {
+                    PaymentHistoryStatus.ALL -> R.string.all_status
+                    PaymentHistoryStatus.VALID -> R.string.payment_status_valid
+                    PaymentHistoryStatus.REVERSED -> R.string.payment_status_reversed
+                },
+            )
+        },
+        onSelected = { statusFilterName = it.name },
+    )
+    Text(
+        stringResource(R.string.payment_count, filteredPayments.size),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (filteredPayments.isEmpty()) {
         Text(
             stringResource(R.string.no_payment_history),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     } else {
-        snapshot.payments.forEach { record ->
+        filteredPayments.forEach { record ->
             FormCard(
                 title = record.payment.receiptNumber,
                 subtitle = "${record.memberName} · ${record.periodLabel}",

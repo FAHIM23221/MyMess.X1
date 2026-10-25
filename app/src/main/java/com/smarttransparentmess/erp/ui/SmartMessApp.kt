@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -38,6 +39,8 @@ import com.smarttransparentmess.erp.presentation.AppUiState
 import com.smarttransparentmess.erp.presentation.AuthViewModel
 import com.smarttransparentmess.erp.presentation.FinanceUiState
 import com.smarttransparentmess.erp.presentation.FinanceViewModel
+import com.smarttransparentmess.erp.presentation.OperationsUiState
+import com.smarttransparentmess.erp.presentation.OperationsViewModel
 import com.smarttransparentmess.erp.ui.admin.AdminFinanceScreen
 import com.smarttransparentmess.erp.ui.auth.AccessUnavailableScreen
 import com.smarttransparentmess.erp.ui.auth.AdminReauthScreen
@@ -46,6 +49,7 @@ import com.smarttransparentmess.erp.ui.auth.PasswordResetScreen
 import com.smarttransparentmess.erp.ui.auth.PasswordUpdateScreen
 import com.smarttransparentmess.erp.ui.dashboard.DashboardScreen
 import com.smarttransparentmess.erp.ui.navigation.LocalRoute
+import com.smarttransparentmess.erp.ui.operations.OperationsScreen
 import com.smarttransparentmess.erp.ui.profile.AppInformationScreen
 import com.smarttransparentmess.erp.ui.profile.ProfileScreen
 
@@ -54,11 +58,13 @@ fun SmartMessApp(
     viewModel: AuthViewModel,
     financeViewModel: FinanceViewModel,
     adminFinanceViewModel: AdminFinanceViewModel,
+    operationsViewModel: OperationsViewModel,
     versionName: String,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val financeUiState by financeViewModel.uiState.collectAsState()
     val adminFinanceUiState by adminFinanceViewModel.uiState.collectAsState()
+    val operationsUiState by operationsViewModel.uiState.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val recoveryPending by viewModel.recoveryPending.collectAsState()
@@ -88,7 +94,9 @@ fun SmartMessApp(
         when (val state = uiState) {
             is AppUiState.Authorized -> {
                 financeViewModel.loadForUser(state.profile.userId)
-                if (state.profile.role == AppRole.ADMIN || state.profile.role == AppRole.MAIN_ADMIN) {
+                val canManage = state.profile.role == AppRole.ADMIN || state.profile.role == AppRole.MAIN_ADMIN
+                operationsViewModel.loadForUser(state.profile.userId, canManage)
+                if (canManage) {
                     adminFinanceViewModel.loadForUser(state.profile.userId)
                 } else {
                     adminFinanceViewModel.clear()
@@ -97,6 +105,7 @@ fun SmartMessApp(
             else -> {
                 financeViewModel.clear()
                 adminFinanceViewModel.clear()
+                operationsViewModel.clear()
             }
         }
     }
@@ -170,6 +179,8 @@ fun SmartMessApp(
                     financeState = financeUiState,
                     adminFinanceState = adminFinanceUiState,
                     adminFinanceViewModel = adminFinanceViewModel,
+                    operationsState = operationsUiState,
+                    operationsViewModel = operationsViewModel,
                     selectedTab = selectedTab,
                     isBusy = isBusy,
                     notice = notice,
@@ -223,6 +234,8 @@ private fun AuthorizedShell(
     financeState: FinanceUiState,
     adminFinanceState: AdminFinanceUiState,
     adminFinanceViewModel: AdminFinanceViewModel,
+    operationsState: OperationsUiState,
+    operationsViewModel: OperationsViewModel,
     selectedTab: Int,
     isBusy: Boolean,
     notice: com.smarttransparentmess.erp.presentation.AuthNotice?,
@@ -234,9 +247,10 @@ private fun AuthorizedShell(
     onClearNotice: () -> Unit,
 ) {
     val canManageFinance = profile.role == AppRole.ADMIN || profile.role == AppRole.MAIN_ADMIN
-    val profileTab = if (canManageFinance) 2 else 1
+    val operationsTab = if (canManageFinance) 2 else 1
+    val profileTab = if (canManageFinance) 3 else 2
     LaunchedEffect(canManageFinance) {
-        if (!canManageFinance && selectedTab == 2) onTabSelected(0)
+        if (selectedTab > profileTab || (!canManageFinance && selectedTab == 2)) onTabSelected(0)
     }
     Scaffold(
         bottomBar = {
@@ -261,6 +275,17 @@ private fun AuthorizedShell(
                     )
                 }
                 NavigationBarItem(
+                    selected = selectedTab == operationsTab,
+                    onClick = { onTabSelected(operationsTab) },
+                    icon = {
+                        Icon(
+                            Icons.Default.Restaurant,
+                            contentDescription = stringResource(R.string.operations_title),
+                        )
+                    },
+                    label = { Text(stringResource(R.string.operations_short)) },
+                )
+                NavigationBarItem(
                     selected = selectedTab == profileTab,
                     onClick = { onTabSelected(profileTab) },
                     icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile)) },
@@ -283,6 +308,12 @@ private fun AuthorizedShell(
             selectedTab == 1 && canManageFinance -> AdminFinanceScreen(
                 state = adminFinanceState,
                 viewModel = adminFinanceViewModel,
+                modifier = Modifier.padding(contentPadding),
+            )
+            selectedTab == operationsTab -> OperationsScreen(
+                state = operationsState,
+                viewModel = operationsViewModel,
+                canManage = canManageFinance,
                 modifier = Modifier.padding(contentPadding),
             )
             else -> ProfileScreen(

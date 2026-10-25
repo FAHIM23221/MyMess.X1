@@ -238,6 +238,43 @@ private fun AdminFinanceOverview(
             stringResource(R.string.bdt_amount, Money.format(overview.advanceCreditMinor)),
         )
     }
+    FormCard(title = stringResource(R.string.due_monitoring)) {
+        if (overview.memberBalances.isEmpty()) {
+            Text(stringResource(R.string.no_active_members))
+        } else {
+            overview.memberBalances.forEach { balance ->
+                val finance = balance.finance
+                Text(balance.memberName, style = MaterialTheme.typography.bodyMedium)
+                KeyValueRow(
+                    label = stringResource(
+                        when {
+                            finance.outstandingDueMinor > 0L -> R.string.finance_due
+                            finance.advanceCreditMinor > 0L -> R.string.finance_advance
+                            else -> R.string.finance_settled
+                        },
+                    ),
+                    value = stringResource(
+                        R.string.bdt_amount,
+                        Money.format(
+                            when {
+                                finance.outstandingDueMinor > 0L -> finance.outstandingDueMinor
+                                finance.advanceCreditMinor > 0L -> finance.advanceCreditMinor
+                                else -> 0L
+                            },
+                        ),
+                    ),
+                )
+                Text(
+                    text = "${stringResource(R.string.finance_charges)}: " +
+                        stringResource(R.string.bdt_amount, Money.format(finance.chargesMinor)) +
+                        " · ${stringResource(R.string.finance_valid_payments)}: " +
+                        stringResource(R.string.bdt_amount, Money.format(finance.validPaymentsMinor)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
     OutlinedButton(onClick = { onTabSelected(1) }, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.admin_finance_quick_payment))
     }
