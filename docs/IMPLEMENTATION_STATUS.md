@@ -7,7 +7,7 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 ## Environment and safety boundary
 
 - Repository branch: `arena/34fa0299-mymess-x1`; PR `#2` remains open.
-- Latest observed green Android implementation commit: `6be5cd91969570d56cd3355003b7738027180fd1`, run `40161969261`.
+- Phase 3 implementation commit with observed green Android verification: `6be5cd91969570d56cd3355003b7738027180fd1`, run `40161969261`.
 - Current source version after the Phase 3 version update: `0.4.0-phase3`, versionCode `5`. Install only an artifact from a green run of the current PR head; do not treat an older artifact as the current source.
 - Active Supabase project: `mymess-x1-phase1` / `iwoiwgkaevobxqojyphb` (`ap-south-1`, PostgreSQL 17).
 - Existing project `mymess` / `jiiexmjczpzxikhmlgbh` is outside the implementation boundary and has not been modified.
