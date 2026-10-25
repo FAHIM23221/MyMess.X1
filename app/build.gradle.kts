@@ -14,11 +14,16 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 
+val bundledPublicProperties = Properties().apply {
+    val file = rootProject.file("config/supabase.public.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+
 fun resolveBuildValue(name: String): String =
-    providers.gradleProperty(name).orNull
-        ?: System.getenv(name)
-        ?: localProperties.getProperty(name)
-        ?: ""
+    providers.gradleProperty(name).orNull?.trim()?.takeIf { it.isNotEmpty() }
+        ?: System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: bundledPublicProperties.getProperty(name)?.trim().orEmpty()
 
 fun buildConfigLiteral(value: String): String =
     "\"${value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")}\""
@@ -54,12 +59,12 @@ android {
         applicationId = "com.smarttransparentmess.erp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-phase2"
+        versionCode = 3
+        versionName = "0.2.1-phase2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // These values are public client configuration; privileged keys are rejected above.
-        // Empty values intentionally keep an unconfigured build safe and visibly offline.
+        // Public configuration resolves from nonblank overrides, then the bundled public file.
+        // Privileged keys are rejected above; missing values keep the app visibly offline.
         buildConfigField("String", "SUPABASE_URL", buildConfigLiteral(supabaseUrlValue))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigLiteral(supabasePublishableKeyValue))
     }

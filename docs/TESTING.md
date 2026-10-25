@@ -10,8 +10,9 @@
 - `FinanceModelsTest.kt`: opening due, partial payment, overpayment/advance, credit offset, reversal visibility, and overflow rejection.
 - `FinanceDtosTest.kt`: exact backend/domain balance consistency, unknown enum rejection, and payment/receipt mapping.
 - `supabase/tests/phase2_smoke_transaction.sql`: rollback-only RPC, duplicate, reversal, closed-period, due/advance carry-forward, and authorization smoke coverage.
-- `scripts/verify_project.py`: dependency-free XML/resource checks, English/Bengali key/placeholder parity, selected SQL authorization invariants, workflow presence, and build-time privileged-key guard.
-- `.github/workflows/android-debug.yml`: runs the static checks, `testDebugUnitTest`, and `assembleDebug`, then uploads only the debug APK artifact.
+- `scripts/verify_project.py`: dependency-free XML/resource checks, bilingual parity, selected SQL invariants, public-config validation, workflow presence, and privileged-key guard.
+- `scripts/verify_built_config.py`: reads generated debug `BuildConfig` without printing values and fails unless a valid HTTPS Supabase URL and publishable key were actually compiled.
+- `.github/workflows/android-debug.yml`: runs static checks, `testDebugUnitTest`, `assembleDebug`, and built-config verification before uploading only the debug APK artifact.
 
 Run locally (with Python 3, JDK 17, Android SDK Platform 36, and a working Gradle wrapper):
 
@@ -19,6 +20,7 @@ Run locally (with Python 3, JDK 17, Android SDK Platform 36, and a working Gradl
 python3 scripts/verify_project.py
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
+python3 scripts/verify_built_config.py
 ```
 
 The static script is not a SQL parser, penetration test, or proof that RLS behaves correctly. The local workspace does not provide the required Android SDK/Gradle runtime. The Phase 1 main workflow run `40153010838` did execute `testDebugUnitTest` and `assembleDebug` successfully and uploaded an unconfigured APK. Phase 2 run `40157238078` then completed the static checks, new finance JVM tests, `assembleDebug`, and artifact upload successfully at commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. The Phase 2 remote migration, grant inspection, and rollback-only SQL smoke transaction have also run; real-JWT API and installed-device tests remain open.

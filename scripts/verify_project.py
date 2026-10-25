@@ -140,6 +140,24 @@ require("role" not in update_dto.lower(), "Client profile-update DTO must not co
 app_gradle = read("app/build.gradle.kts")
 require("containsServiceRoleCredential" in app_gradle, "Build-time privileged-key rejection is missing")
 require("sb_secret_" in app_gradle and "service_role" in app_gradle, "Build does not reject privileged Supabase key formats")
+require("config/supabase.public.properties" in app_gradle, "Bundled public configuration fallback is missing")
+
+public_config_text = read("config/supabase.public.properties")
+public_config = dict(
+    line.split("=", maxsplit=1)
+    for line in public_config_text.splitlines()
+    if line.strip() and not line.lstrip().startswith("#") and "=" in line
+)
+require(set(public_config) == {"SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"}, "Public config must contain exactly the two Android client values")
+require(
+    public_config.get("SUPABASE_URL") == "https://iwoiwgkaevobxqojyphb.supabase.co",
+    "Public config must target the reviewed mymess-x1-phase1 project",
+)
+require(
+    re.fullmatch(r"sb_publishable_[A-Za-z0-9_-]{20,}", public_config.get("SUPABASE_PUBLISHABLE_KEY", "")) is not None,
+    "Public config must contain only a publishable Android key",
+)
+
 client_provider = read("app/src/main/java/com/smarttransparentmess/erp/data/security/SupabaseClientProvider.kt")
 manifest = read("app/src/main/AndroidManifest.xml")
 require("LogLevel.NONE" in client_provider, "Supabase SDK logging should remain disabled pending token-log verification")
@@ -148,6 +166,8 @@ require('android:allowBackup="false"' in manifest, "Android backup must remain d
 
 workflow = read(".github/workflows/android-debug.yml")
 require("assembleDebug" in workflow and "testDebugUnitTest" in workflow, "Workflow must test and build a debug APK")
+require("scripts/verify_built_config.py" in workflow, "Workflow must verify generated public Supabase configuration")
+require((ROOT / "scripts/verify_built_config.py").is_file(), "Built-config verification script is missing")
 require("actions/upload-artifact@v4" in workflow, "Workflow must upload an APK artifact")
 require("workflow_dispatch:" in workflow, "Workflow must be manually runnable")
 require("create-release" not in workflow.lower() and "gh release" not in workflow.lower(), "Workflow must not auto-publish releases")

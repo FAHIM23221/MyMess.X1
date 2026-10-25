@@ -6,7 +6,7 @@ This is a security-conscious Phase 1 foundation, not a completed security audit.
 
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are public client configuration. The app may include them in `BuildConfig` and in a debug APK.
 - The Gradle build rejects recognizable `sb_secret_…` and legacy JWTs with a `role: service_role` claim. Do not try to bypass this check. Never add database passwords, service-role/service-account keys, signing passwords, or private signing files to the repository, APK, workflow variables, or project ZIP.
-- `local.properties` is ignored by Git and not included in the source ZIP. Use `local.properties.example` as a template.
+- `config/supabase.public.properties` intentionally contains only the active project's public URL and publishable Android key so CI can produce a connected build without privileged secrets. `local.properties` is ignored by Git and can override it; use `local.properties.example` as a template. The CI built-config check fails before upload if the generated debug configuration is blank or privileged.
 - GitHub Actions stores only the APK build artifact; it does not publish a release or sign a production APK.
 
 ## Auth, session storage, and deep links

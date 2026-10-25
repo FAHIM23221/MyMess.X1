@@ -28,39 +28,40 @@ Admin finance entry UI, meals/rice/fines/expenses/cash book, duties/notices, mes
 
 ## Quick start
 
-1. Create a Supabase project and follow [`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md). For a fresh project, review and apply migrations in order:
-   - `supabase/migrations/0001_phase1_foundation.sql`
-   - `supabase/migrations/0002_phase2_billing_payments.sql`
-   - `supabase/migrations/0003_phase2_view_grants.sql`
-2. Perform the one-time Main Admin bootstrap only after the designated Auth user exists and is confirmed. Do not rerun an already completed bootstrap.
-3. Copy `local.properties.example` to `local.properties` and fill in the project URL and **publishable/anon client key**. Gradle rejects recognizable `sb_secret_` and `service_role` keys. Never place a privileged key in the app, repository, APK, logs, or GitHub Variables.
-4. On a machine with JDK 17 and Android SDK Platform 36, run:
+The active project's public Android configuration is intentionally bundled in `config/supabase.public.properties`. It contains only the HTTPS project URL and publishable client key; Auth, RLS, grants, and RPC authorization protect the backend. No privileged credential is needed to build or run the app.
+
+1. On a machine with JDK 17 and Android SDK Platform 36, run:
 
    ```sh
    python3 scripts/verify_project.py
    ./gradlew testDebugUnitTest assembleDebug
+   python3 scripts/verify_built_config.py
    ```
 
    The debug APK output is `app/build/outputs/apk/debug/app-debug.apk`.
-5. Or run **Android debug APK** from GitHub Actions. Read [`docs/GITHUB_PHONE_GUIDE.md`](docs/GITHUB_PHONE_GUIDE.md) for phone download steps.
+2. Or run **Android debug APK** from GitHub Actions and download the newly uploaded artifact. Read [`docs/GITHUB_PHONE_GUIDE.md`](docs/GITHUB_PHONE_GUIDE.md) for phone steps.
+3. To use another Supabase project, follow [`docs/SETUP_SUPABASE.md`](docs/SETUP_SUPABASE.md), then override the bundled values through `local.properties` or nonblank Actions Variables. For a fresh backend, review/apply migrations `0001`, `0002`, and `0003` in order and perform the one-time Main Admin bootstrap once.
 
-An unconfigured build deliberately opens **Setup required** rather than pretending that login or data access succeeded.
+A build with no valid public or override configuration deliberately opens **Setup required**. Older artifacts without the bundled public configuration show that screen even though the backend exists.
 
-## Configure GitHub Actions
+## Configuration precedence and GitHub Actions
 
-The workflow builds without Supabase Variables, but that APK remains unconfigured. For a connected debug artifact, add these repository **Actions Variables**:
+Gradle resolves each value in this order: nonblank Gradle property → nonblank environment variable → nonblank `local.properties` → bundled public config. Empty GitHub Variables therefore do not erase the working public defaults.
+
+Optional repository **Actions Variables** remain available for overrides:
 
 - `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY` — a publishable key (`sb_publishable_…`) or legacy anon JWT, never a `service_role`/`sb_secret_…` key.
+- `SUPABASE_PUBLISHABLE_KEY` — publishable/anon client configuration only, never `service_role`/`sb_secret_…`.
 
-Then run **Actions → Android debug APK → Run workflow**. The workflow uploads `smart-transparent-mess-debug-apk-<commit>` for 14 days; it does not publish a production release.
+After `assembleDebug`, the workflow runs `scripts/verify_built_config.py` against generated `BuildConfig`; the APK is uploaded only when a valid HTTPS project URL and publishable key are actually present. The workflow does not publish a production release.
 
-The current integration received HTTP 403 for repository Variables, so no configured APK is claimed. This blocker and the required permission are recorded in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
+The earlier Variables API returned HTTP 403. That isolated permission issue remains documented, but it no longer prevents a configured debug build because the publishable client configuration is bundled intentionally.
 
 ## Project layout
 
 ```text
 app/                 Native Android app, Compose UI, repositories, domain, and tests
+config/              Bundled public Android Supabase URL/publishable key only
 supabase/migrations/ Ordered additive Postgres schema, RLS, grants, and protected RPCs
 supabase/bootstrap/  One-time Main Admin bootstrap and controlled recovery templates
 supabase/tests/      Rollback-only database smoke/integration SQL

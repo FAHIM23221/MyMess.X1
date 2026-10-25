@@ -44,14 +44,14 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 
 - Observed result: GitHub repository Variables list/create APIs returned **HTTP 403 `Resource not accessible by integration`**.
 - Required permission: repository **Variables: read/write** for the GitHub App installation token. Workflow dispatch may separately require **Actions: write**.
-- Current effect: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` were **not written** to Actions Variables. No configured rebuild was dispatched.
-- Next action: repair the repository integration permissions, then add only the two public configuration Variables and dispatch `Android Debug APK` on this branch. Do not substitute secrets or privileged keys.
+- Current effect: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` were **not written** to Actions Variables. The denied API has not been retried.
+- Independent resolution: the same non-privileged Android URL/publishable key is now intentionally bundled in `config/supabase.public.properties`; blank Variables fall back to it. Variables permission repair is optional for future overrides and no longer blocks a configured debug APK.
 
-### BLOCKED — configured installable APK
+### IN_PROGRESS — configured installable APK
 
-- Existing run `40153010838` proves the Phase 1 source builds, but its artifact has no Supabase Variables and therefore is not a configured installation.
-- A new configured APK requires: successful migration/build on this branch, public Actions Variables, a new successful workflow, and installation of that newly produced artifact.
-- No new APK, installation, or device verification is claimed yet.
+- The screenshot-supplied older artifact was correctly identified as unconfigured: it lacked public Supabase configuration.
+- Bundled public configuration, blank-Variable fallback, and a generated-`BuildConfig` CI verification step are now in source. A new workflow and artifact inspection are pending.
+- Delivery requires a new successful workflow followed by installation of that new artifact. No installation or device verification is claimed yet.
 
 ## Immediate verification queue
 
@@ -60,4 +60,5 @@ Status vocabulary: **COMPLETE**, **IN_PROGRESS**, **READY_FOR_TESTING**, **BLOCK
 3. **COMPLETE:** Rollback-only smoke script passed; post-rollback smoke periods and ledger rows are both zero. See `docs/PHASE2_FINANCE.md` and `supabase/tests/phase2_smoke_transaction.sql`.
 4. **COMPLETE:** Run `40157238078` passed static checks, JVM tests, `assembleDebug`, and artifact upload for commit `35119bb131a5df5cb41d3079850c80a8c30112a0`. Artifact ID `12585146867` is 21,705,454 bytes and expires `2026-11-08T03:11:52Z`; it is unconfigured because Variables remain blocked.
 5. **READY_FOR_TESTING:** Exercise real anonymous/Member/Admin/suspended/cross-mess JWTs before real financial data.
-6. **DEFERRED:** Continue Admin finance entry UI and then Phase 3 independently of the isolated Variables permission blocker.
+6. **IN_PROGRESS:** Build and inspect a publicly configured debug APK without relying on the denied Variables API; then provide the new artifact for installation.
+7. **DEFERRED:** Continue Admin finance entry UI and then Phase 3.

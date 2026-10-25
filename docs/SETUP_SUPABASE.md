@@ -1,6 +1,6 @@
 # Supabase setup — Phases 1–2
 
-This guide is for a new Supabase project. The project source contains no backend credentials. The user must create and configure their own Supabase project before the app can authenticate.
+This guide is for a new Supabase project or an optional project override. The repository bundles only the active project's public Android URL and publishable key in `config/supabase.public.properties`; it contains no privileged backend credential. That public configuration is sufficient for the app to authenticate against the already migrated active project.
 
 ## 1. Create the project and configure Auth
 
@@ -46,17 +46,18 @@ These values are public client configuration. Never use a `service_role` JWT, `s
 
 ### Local build
 
-Copy `local.properties.example` to `local.properties` at the project root and fill the two values. `local.properties` is ignored by Git. On a machine with JDK 17, Android SDK Platform 36, and Gradle network access:
+The bundled public file is used automatically. To override it for another project, copy `local.properties.example` to `local.properties` and fill the two values; blank values fall back to the bundled public file. `local.properties` is ignored by Git. On a machine with JDK 17, Android SDK Platform 36, and Gradle network access:
 
 ```sh
 ./gradlew testDebugUnitTest assembleDebug
+python3 scripts/verify_built_config.py
 ```
 
 ### GitHub Actions build
 
-In the repository, open **Settings → Secrets and variables → Actions → Variables** and create `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The publishable key is intentionally not treated as a secret, but still share it only as needed. Then run **Actions → Android debug APK → Run workflow**. The APK is a debug build artifact and is not automatically released.
+No Actions Variables are required for the active public project configuration. To override it, open **Settings → Secrets and variables → Actions → Variables** and create `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The publishable key is intentionally not treated as a privileged secret. Then run **Actions → Android debug APK → Run workflow**.
 
-If the variables are left blank, the project still builds but the app shows **Setup required**. It does not fake a sign-in.
+Blank Variables fall back to `config/supabase.public.properties`. After the build, `scripts/verify_built_config.py` checks generated `BuildConfig` before artifact upload. If all public/override configuration is removed, the app shows **Setup required** and does not fake a sign-in.
 
 ## 5. Provisioning and current limitations
 
