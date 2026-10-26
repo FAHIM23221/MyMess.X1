@@ -17,12 +17,87 @@ const safeRequestFailure = () =>
     code: "AUTHORIZATION_VALIDATION_CAPACITY_OR_DUPLICATE",
   });
 
-const safeDeliveryFailure = (invitationId: string, code: string) =>
+type InviteFailure = {
+  outcome: "FAILED" | "UNCONFIRMED";
+  code: string;
+  dependency: string;
+};
+
+// Use only stable Auth metadata and a fixed Auth-owned message. Raw provider
+// errors, email addresses, response bodies, and SMTP details are never returned.
+const classifyInviteError = (error: {
+  code?: string;
+  status?: number;
+  message?: string;
+}): InviteFailure => {
+  const authCode = typeof error.code === "string" ? error.code : "";
+  const status = typeof error.status === "number" ? error.status : 0;
+  const message = typeof error.message === "string" ? error.message : "";
+
+  if (status === 429 || authCode === "over_email_send_rate_limit") {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_EMAIL_RATE_LIMITED",
+      dependency: "SUPABASE_AUTH_EMAIL_RATE_LIMIT",
+    };
+  }
+  if (status === 401 || status === 403) {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_ADMIN_UNAUTHORIZED",
+      dependency: "EDGE_AUTH_ADMIN_RUNTIME_ENVIRONMENT",
+    };
+  }
+  if (authCode === "email_exists") {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_EMAIL_ALREADY_REGISTERED",
+      dependency: "SUPABASE_AUTH_EXISTING_USER",
+    };
+  }
+  if (/^Error sending invite email$/i.test(message.trim())) {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_INVITE_EMAIL_SEND_FAILED",
+      dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+    };
+  }
+  if (status === 0) {
+    return {
+      outcome: "UNCONFIRMED",
+      code: "AUTH_INVITE_UNCONFIRMED",
+      dependency: "SUPABASE_AUTH_NETWORK",
+    };
+  }
+  if (status === 400 || status === 422 || authCode === "validation_failed") {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_INVITE_VALIDATION_REJECTED",
+      dependency: "SUPABASE_AUTH_INVITE_INPUT",
+    };
+  }
+  if (status >= 500) {
+    return {
+      outcome: "FAILED",
+      code: "AUTH_INVITE_SERVICE_ERROR",
+      dependency: "SUPABASE_AUTH_SERVICE",
+    };
+  }
+  return {
+    outcome: "FAILED",
+    code: "AUTH_INVITE_REJECTED",
+    dependency: "SUPABASE_AUTH_INVITE",
+  };
+};
+
+const safeDeliveryOutcome = (invitationId: string, failure: InviteFailure) =>
   response(200, {
-    status: "DELIVERY_FAILED",
+    status: failure.outcome === "FAILED"
+      ? "DELIVERY_FAILED"
+      : "DELIVERY_UNCONFIRMED",
     invitation_id: invitationId,
-    code,
-    dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+    code: failure.code,
+    dependency: failure.dependency,
   });
 
 const handleRequest = async (request: Request): Promise<Response> => {
@@ -156,15 +231,20 @@ const handleRequest = async (request: Request): Promise<Response> => {
   );
 
   if (inviteError || !inviteData?.user?.id) {
-    const outcome = inviteError ? "FAILED" : "UNCONFIRMED";
-    const code = inviteError ? "AUTH_INVITE_REJECTED" : "AUTH_INVITE_UNCONFIRMED";
+    const failure: InviteFailure = inviteError
+      ? classifyInviteError(inviteError)
+      : {
+          outcome: "UNCONFIRMED",
+          code: "AUTH_INVITE_UNCONFIRMED",
+          dependency: "SUPABASE_AUTH_INVITE_RESPONSE",
+        };
     const { error: finalizeError } = await serviceClient.rpc(
       "finalize_member_invitation_delivery",
       {
         target_invitation_id: invitationId,
         actor_user_id: actor.id,
-        outcome,
-        error_code: code,
+        outcome: failure.outcome,
+        error_code: failure.code,
       },
     );
     if (finalizeError) {
@@ -172,17 +252,10 @@ const handleRequest = async (request: Request): Promise<Response> => {
         status: "DELIVERY_UNCONFIRMED",
         invitation_id: invitationId,
         code: "DELIVERY_STATE_UNCONFIRMED",
-        dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+        dependency: "MEMBER_INVITATION_DELIVERY_FINALIZATION",
       });
     }
-    return inviteError
-      ? safeDeliveryFailure(invitationId, code)
-      : response(200, {
-          status: "DELIVERY_UNCONFIRMED",
-          invitation_id: invitationId,
-          code,
-          dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
-        });
+    return safeDeliveryOutcome(invitationId, failure);
   }
 
   const { error: finalizeError } = await serviceClient.rpc(
@@ -199,7 +272,7 @@ const handleRequest = async (request: Request): Promise<Response> => {
       status: "DELIVERY_UNCONFIRMED",
       invitation_id: invitationId,
       code: "DELIVERY_STATE_UNCONFIRMED",
-      dependency: "SUPABASE_AUTH_INVITE_AND_CONFIGURED_SMTP",
+      dependency: "MEMBER_INVITATION_DELIVERY_FINALIZATION",
     });
   }
 

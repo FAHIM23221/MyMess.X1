@@ -223,6 +223,18 @@ require(
     "jsr:@supabase/supabase-js" not in invitation_edge,
     "Invitation Edge must not regress to the JSR import that produced BOOT_ERROR",
 )
+for fragment in (
+    "classifyInviteError",
+    "over_email_send_rate_limit",
+    "AUTH_INVITE_EMAIL_SEND_FAILED",
+    "AUTH_INVITE_UNCONFIRMED",
+    "MEMBER_INVITATION_DELIVERY_FINALIZATION",
+):
+    require(fragment in invitation_edge, f"Invitation safe error classification is missing: {fragment}")
+require(
+    "console.log" not in invitation_edge and "console.error" not in invitation_edge,
+    "Invitation Edge must not log raw Auth/provider errors",
+)
 
 profile_dto = read("app/src/main/java/com/smarttransparentmess/erp/data/profile/ProfileDto.kt")
 update_dto = profile_dto.split("data class ProfileUpdateDto(", maxsplit=1)[-1]

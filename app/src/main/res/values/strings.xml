@@ -390,7 +390,7 @@
     <string name="members_operation_dependency">Dependency: %1$s</string>
     <string name="members_notice_added">Member profile is active. Existing confirmed Auth access was linked without an email claim.</string>
     <string name="members_notice_invitation_sent">The server confirmed that the invitation was sent.</string>
-    <string name="members_notice_delivery_failed">Invitation delivery failed. Configure Supabase Auth/SMTP and retry; no delivery is claimed.</string>
+    <string name="members_notice_delivery_failed">Supabase Auth rejected the invitation. Review the safe code and dependency before retrying; no delivery is claimed.</string>
     <string name="members_notice_delivery_unconfirmed">Delivery could not be confirmed. Refresh and inspect the invitation status before retrying.</string>
     <string name="members_notice_request_rejected">The server rejected the request because of authorization, validation, capacity, or a duplicate.</string>
     <string name="members_notice_authentication_required">Your session is missing or expired. Sign in again; no invitation or email delivery is claimed.</string>
