@@ -214,6 +214,16 @@ require("ErpAction.SEND_MEMBER_NOTIFICATION" in extended_repository, "Admin noti
 require("ErpAction.SEND_MEMBER_NOTIFICATION" in extended_screen, "Admin notification composer wiring is missing")
 require("notificationBatches" in extended_screen, "Admin notification batch history is missing")
 
+invitation_edge = read("supabase/functions/member-invitation/index.ts")
+require(
+    'from "npm:@supabase/supabase-js@2.118.0"' in invitation_edge,
+    "Invitation Edge must use the live-smoke-tested pinned npm supabase-js import",
+)
+require(
+    "jsr:@supabase/supabase-js" not in invitation_edge,
+    "Invitation Edge must not regress to the JSR import that produced BOOT_ERROR",
+)
+
 profile_dto = read("app/src/main/java/com/smarttransparentmess/erp/data/profile/ProfileDto.kt")
 update_dto = profile_dto.split("data class ProfileUpdateDto(", maxsplit=1)[-1]
 require("role" not in update_dto.lower(), "Client profile-update DTO must not contain a role field")

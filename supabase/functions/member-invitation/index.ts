@@ -1,4 +1,5 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+// The current Edge runtime returns BOOT_ERROR for the JSR specifier; pinned npm is smoke-tested.
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json",
