@@ -35,7 +35,7 @@ python3 scripts/verify_project.py
 python3 scripts/verify_built_config.py
 ```
 
-The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.2-phase3` / versionCode `7`; use the latest green current-head artifact, not an older phase artifact.
+The static script is not a SQL parser, penetration test or proof of RLS behavior. SQL smoke uses injected claims in an owner session and rolls back; it is not a real-JWT test. This sandbox lacks a reliable full local Android/Gradle runtime, so build evidence comes only from observed GitHub Actions runs. Current source is version `0.4.3-phase3` / versionCode `8`; use the latest green current-head artifact, not an older phase artifact.
 
 ## Observed exact-head Android runs
 
@@ -50,15 +50,18 @@ The static script is not a SQL parser, penetration test or proof of RLS behavior
 | `ad6b0ba` hotfix documentation | `40200974769`, `40200978038` | Passed at the exact documentation head and uploaded an artifact. |
 | `ac79a09` Admin notifications + Phase F backend | `40203387352`, `40203392928` | Passed static checks, JVM tests, debug build, config verification and artifact upload. |
 | `e7ded35` invitation Edge boot fix | `40286053939`, `40286058434` | Passed static guardrail/JVM/build/config checks; live OPTIONS startup separately passed. |
+| `9566373` safe Auth rejection classification | `40288956404`, `40288964905` | Passed static/JVM/`0.4.3` build/config checks and artifact upload; Deno type-check and live v4 OPTIONS separately passed. |
 
-## Observed live invitation runtime diagnosis — 2026-10-26
+## Observed live invitation runtime and real-JWT diagnosis — 2026-10-26
 
 - Unauthenticated and structurally invalid/invalid-signature Bearer calls to `member-invitation` returned the expected `401`; this did not execute an invitation or use a real credential.
 - A temporary non-privileged diagnostic function returned `200 RUNTIME_OK` without dependencies, `503 BOOT_ERROR` after adding `jsr:@supabase/supabase-js@2`, and `200 NPM_IMPORT_OK` with `npm:@supabase/supabase-js@2`.
 - Pinned `npm:@supabase/supabase-js@2.118.0` plus an anon Auth-client invalid-token negative check returned `200 PINNED_IMPORT_AND_AUTH_CLIENT_OK`. No service-role operation, Auth user creation, invitation, secret value or database mutation was part of the diagnostic.
 - The diagnostic function was deleted. The transactional HTTP extension was rolled back; read-back found only the pre-existing `pgcrypto` extension.
-- Actual `member-invitation` ACTIVE v3 has the committed pinned import and `verify_jwt=true`; its OPTIONS request returned `200 ok`, directly confirming runtime startup after the repair.
-- These checks isolate and verify the boot defect. They do not prove a real-JWT invitation, Auth Admin invite, SMTP delivery, resend or acceptance.
+- Actual `member-invitation` ACTIVE v3 had the committed pinned import and `verify_jwt=true`; its OPTIONS request returned `200 ok`, directly confirming runtime startup after the repair.
+- A later installed-Android real-JWT Add Member request progressed beyond the 503: it created invitation `1beabb45-5807-46f1-83b9-64ffea937fce`, reached Auth Admin, persisted `PENDING`/`FAILED`, one delivery attempt and safe `AUTH_INVITE_REJECTED`, and created no linked/new Auth user. This proves the request/RPC/Auth/finalization path executed, not email delivery.
+- ACTIVE v4 adds safe classification for Auth rate-limit, existing-email, validation, known invite-email-send failure, Auth service and unknown network outcomes. Deno type-check and source/JWT-flag read-back passed; actual v4 OPTIONS returned `200 ok`. No automatic resend was run; the original row still has one attempt.
+- These checks isolate the boot defect and prove a failed real-JWT attempt. They do not prove successful Auth provisioning, SMTP/default-mail delivery, resend or acceptance. The original generic error cannot retrospectively establish SMTP as the sole cause.
 
 ## Supabase integration test matrix before real data
 
@@ -93,4 +96,4 @@ Use separate test Auth accounts and a disposable project. Test allowed and denie
 
 Also test password recovery redirect, PKCE callback, refresh after process restart, local/remote sign-out, invalid Auth logs, real invitation/resend/acceptance, and external delivery configuration. On Android verify valid/reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permissions, light/dark layouts, rotation/process restoration and that no arbitrary cache file is exposed through the receipt `FileProvider`.
 
-The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Live Edge ACTIVE v3 deployment/source/JWT-flag read-back and OPTIONS startup verification are complete, but real JWT/device invitation, SMTP, FCM, physical backup/restore and production-release verification remain open. Notification and Phase F SQL smoke uses injected claims and is not a substitute for those checks. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
+The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Live Edge ACTIVE v4 deployment/source/JWT-flag read-back, Deno type-check and OPTIONS startup verification are complete; one real-JWT Android invitation attempt is recorded as failed with no Auth user. Classified resend, successful invitation/acceptance, SMTP/default-mail delivery, remaining device/security tests, FCM, physical backup/restore and production-release verification remain open. Notification and Phase F SQL smoke uses injected claims and is not a substitute for those checks. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
