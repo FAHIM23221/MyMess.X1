@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: **2026-10-25** (Asia/Dhaka). Branch `arena/34fa0299-mymess-x1`; PR `#2` remains open. Current Android/backend source head is `ac79a09fdc543f63699b75bb09d5f458a38ce532`.
+Last updated: **2026-10-26** (Asia/Dhaka). Branch `arena/34fa0299-mymess-x1`; PR `#2` remains open. Current Android/backend source head is `e7ded35e23b3614da1d8f65d0edc6aad63f2cb15`.
 
 Status vocabulary: **COMPLETE** means the named slice has the evidence listed, not production readiness; **READY_FOR_TESTING** means source/backend checks exist but real JWT/device or external delivery is still required; **IN_PROGRESS** means adjacent requested behavior remains; **BLOCKED** identifies an external/configuration dependency; **DEFERRED** means no implementation is claimed.
 
@@ -29,7 +29,7 @@ Status vocabulary: **COMPLETE** means the named slice has the evidence listed, n
 
 - `ui/members/MemberManagementScreen.kt`, `MemberDetailSection.kt`, `presentation/MemberManagementViewModel.kt`, `data/members/MemberManagementRepository.kt`: searchable/sortable/filterable members, invitation/lifecycle/role/audit workspaces.
 - `0007_member_management.sql` and `0008_member_management_type_fix.sql`: `member_invitations`, departure metadata, capacity helper, provisioning/acceptance/resend/cancel/edit/lifecycle RPCs, audited role/status transitions, and member-management audit policy.
-- `supabase/functions/member-invitation/index.ts`: invitation function with JWT verification; delivery state is explicit and no success is inferred without provider confirmation. Source hotfix `12cbf4d` adds a safe thrown-error envelope; live deployment/read-back confirms **ACTIVE v2**, `verify_jwt=true`, with that safe-catch source.
+- `supabase/functions/member-invitation/index.ts`: invitation function with JWT verification; delivery state is explicit and no success is inferred without provider confirmation. Commit `e7ded35` replaces the live-reproduced JSR `BOOT_ERROR` dependency with pinned `npm:@supabase/supabase-js@2.118.0`; **ACTIVE v3** source/JWT-flag read-back and actual `200 ok` OPTIONS runtime check passed. `scripts/verify_project.py` now rejects regression to the failing JSR specifier.
 - `phase_a_member_management_smoke.sql`: passed visibility, invitation idempotency, duplicate/capacity, cancellation, audit, direct-write denial, helper privilege and missing-profile checks with zero retained smoke rows.
 - `0022_member_join_date_business_timezone.sql` plus `phase_a_business_timezone_smoke.sql`: passed Asia/Dhaka join-date boundary regression in a UTC outer session.
 - `data/members/OnboardingResponseParser.kt` and `OnboardingResponseParserTest.kt`: non-2xx envelopes, authentication/configuration/request failures, safe code/dependency allowlisting and no raw provider body in UI state. Exact-head CI runs `40200572153` and `40200576638` passed.
@@ -97,6 +97,7 @@ Status vocabulary: **COMPLETE** means the named slice has the evidence listed, n
 | `12cbf4d` invitation hotfix | `40200572153`, `40200576638` | Static checks, JVM tests, debug build, public-config verification and artifact upload passed. |
 | `ad6b0ba` hotfix documentation | `40200974769`, `40200978038` | Same Android source as the hotfix; exact documentation-head checks and artifact upload passed. |
 | `ac79a09` Admin notifications + Phase F backend | `40203387352`, `40203392928` | Static checks, JVM tests (including notification validation/DTO tests), debug build, public-config verification and artifact upload passed. |
+| `e7ded35` invitation Edge boot fix | `40286053939`, `40286058434` | Static import guardrail, JVM tests, unchanged Android debug build, config verification and artifact upload passed; live OPTIONS startup separately returned `200 ok`. |
 
 The sandbox lacks a reliable full local Android/Gradle runtime. Compilation is claimed only for the exact observed GitHub Actions heads above, never from a fictitious local build. No APK installation or production release is claimed.
 
@@ -105,7 +106,7 @@ The sandbox lacks a reliable full local Android/Gradle runtime. Compilation is c
 Applied only to `iwoiwgkaevobxqojyphb`:
 
 1. Phase 1–3 foundation/finance/operations migrations `0001`–`0006` and their earlier rollback/grant/RLS evidence.
-2. Phase A `0007`–`0008`; invitation Edge `member-invitation` ACTIVE v2 with `verify_jwt=true` and committed safe-catch source was read back. This is not a real invitation/delivery result.
+2. Phase A `0007`–`0008`; invitation Edge `member-invitation` ACTIVE v3 with pinned npm `2.118.0`, `verify_jwt=true` and committed safe-catch source was read back. Actual OPTIONS returned `200 ok`; the temporary diagnostic function and transactional HTTP extension were not retained. This is not a real invitation/delivery result.
 3. Phase B `0009`–`0011`.
 4. Phase C `0012`–`0014`.
 5. Phase D `0015`–`0016`.
@@ -129,7 +130,7 @@ Install only the latest green current-head artifact and verify Auth/deep links, 
 
 ### BLOCKED — outbound Auth/invitation email
 
-SMTP is unconfigured. `member-invitation` ACTIVE v2 is deployed/read back with JWT verification, but no real-JWT invocation, persisted invitation, resend, recovery email or acceptance delivery is verified. The screenshot incident had zero invitation rows on safe read-back; it is not evidence of Auth creation or delivery. The app must continue to expose the exact delivery status rather than report a fake success.
+SMTP is unconfigured. `member-invitation` ACTIVE v3 repairs the reproduced JSR dependency `BOOT_ERROR` and passed its OPTIONS runtime check, but no real-JWT invocation, persisted invitation, resend, recovery email or acceptance delivery is verified. The screenshot incident had zero invitation rows on safe read-back; it was not evidence of Auth creation or delivery. The app must continue to expose the exact delivery status rather than report a fake success.
 
 ### BLOCKED — external push and automatic due publication
 
@@ -149,7 +150,7 @@ GitHub Variables, branch-protection and Actions-permissions writes previously re
 
 ## Immediate queue
 
-1. Observe the final documentation-head CI and supply only its green exact-head debug artifact; do not use the older hotfix APK as evidence for this feature.
+1. Use the existing green `0.4.2` artifact for a real-JWT invitation retry and record the resulting status; no Android APK change is required for the pinned server import.
 2. Run real-JWT invitation and Admin/recipient notification tests, including duplicate retries, same-mess/cross-mess authorization and read state; keep SMTP/external-push claims closed.
 3. Implement the Phase F Android report/logical-export UI and CSV only after preserving the verified backend boundaries; keep `restore_supported=false` until a separately approved, tested recovery design exists.
 4. Keep real-JWT, concurrency, installed-device, PDF/device, physical recovery and production-release blockers visible until independently verified.

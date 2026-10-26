@@ -49,6 +49,16 @@ The static script is not a SQL parser, penetration test or proof of RLS behavior
 | `12cbf4d` invitation hotfix | `40200572153`, `40200576638` | Passed static checks, JVM tests, debug build and config verification. |
 | `ad6b0ba` hotfix documentation | `40200974769`, `40200978038` | Passed at the exact documentation head and uploaded an artifact. |
 | `ac79a09` Admin notifications + Phase F backend | `40203387352`, `40203392928` | Passed static checks, JVM tests, debug build, config verification and artifact upload. |
+| `e7ded35` invitation Edge boot fix | `40286053939`, `40286058434` | Passed static guardrail/JVM/build/config checks; live OPTIONS startup separately passed. |
+
+## Observed live invitation runtime diagnosis — 2026-10-26
+
+- Unauthenticated and structurally invalid/invalid-signature Bearer calls to `member-invitation` returned the expected `401`; this did not execute an invitation or use a real credential.
+- A temporary non-privileged diagnostic function returned `200 RUNTIME_OK` without dependencies, `503 BOOT_ERROR` after adding `jsr:@supabase/supabase-js@2`, and `200 NPM_IMPORT_OK` with `npm:@supabase/supabase-js@2`.
+- Pinned `npm:@supabase/supabase-js@2.118.0` plus an anon Auth-client invalid-token negative check returned `200 PINNED_IMPORT_AND_AUTH_CLIENT_OK`. No service-role operation, Auth user creation, invitation, secret value or database mutation was part of the diagnostic.
+- The diagnostic function was deleted. The transactional HTTP extension was rolled back; read-back found only the pre-existing `pgcrypto` extension.
+- Actual `member-invitation` ACTIVE v3 has the committed pinned import and `verify_jwt=true`; its OPTIONS request returned `200 ok`, directly confirming runtime startup after the repair.
+- These checks isolate and verify the boot defect. They do not prove a real-JWT invitation, Auth Admin invite, SMTP delivery, resend or acceptance.
 
 ## Supabase integration test matrix before real data
 
@@ -83,4 +93,4 @@ Use separate test Auth accounts and a disposable project. Test allowed and denie
 
 Also test password recovery redirect, PKCE callback, refresh after process restart, local/remote sign-out, invalid Auth logs, real invitation/resend/acceptance, and external delivery configuration. On Android verify valid/reversed PDF rendering, Bengali text, document-picker cancellation/success, share-sheet permissions, light/dark layouts, rotation/process restoration and that no arbitrary cache file is exposed through the receipt `FileProvider`.
 
-The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Live Edge ACTIVE v2 deployment/source/JWT-flag read-back is complete, but real JWT/device invocation, SMTP, FCM, physical backup/restore and production-release verification remain open. Notification and Phase F SQL smoke uses injected claims and is not a substitute for those checks. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
+The hotfix adds parser tests for structured non-2xx, authentication, configuration, request-unconfirmed and safe-detail handling. Live Edge ACTIVE v3 deployment/source/JWT-flag read-back and OPTIONS startup verification are complete, but real JWT/device invitation, SMTP, FCM, physical backup/restore and production-release verification remain open. Notification and Phase F SQL smoke uses injected claims and is not a substitute for those checks. See `FEATURE_AUDIT.md`, `IMPLEMENTATION_STATUS.md` and `SECURITY.md` for the current evidence boundaries.
