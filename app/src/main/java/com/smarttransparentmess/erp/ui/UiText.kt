@@ -4,8 +4,18 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.smarttransparentmess.erp.R
+import com.smarttransparentmess.erp.domain.finance.AdjustmentKind
+import com.smarttransparentmess.erp.domain.finance.ChargeCategory
+import com.smarttransparentmess.erp.domain.finance.PaymentMethod
 import com.smarttransparentmess.erp.domain.model.AccountStatus
 import com.smarttransparentmess.erp.domain.model.AppRole
+import com.smarttransparentmess.erp.domain.operations.ExpenseCategory
+import com.smarttransparentmess.erp.domain.operations.MealSlot
+import com.smarttransparentmess.erp.domain.operations.RiceMovementKind
+import com.smarttransparentmess.erp.domain.validation.FinanceValidationError
+import com.smarttransparentmess.erp.domain.validation.OperationsValidationError
+import com.smarttransparentmess.erp.presentation.AdminFinanceNotice
+import com.smarttransparentmess.erp.presentation.OperationsNotice
 import com.smarttransparentmess.erp.presentation.AuthNotice
 import com.smarttransparentmess.erp.presentation.ProfileUnavailableReason
 
@@ -21,6 +31,106 @@ fun AccountStatus.labelRes(): Int = when (this) {
     AccountStatus.ACTIVE -> R.string.active_status
     AccountStatus.PENDING -> R.string.pending_status
     AccountStatus.SUSPENDED -> R.string.suspended_status
+}
+
+@StringRes
+fun PaymentMethod.labelRes(): Int = when (this) {
+    PaymentMethod.CASH -> R.string.payment_method_cash
+    PaymentMethod.BKASH -> R.string.payment_method_bkash
+    PaymentMethod.NAGAD -> R.string.payment_method_nagad
+    PaymentMethod.BANK -> R.string.payment_method_bank
+    PaymentMethod.MOBILE_BANKING -> R.string.payment_method_mobile_banking
+    PaymentMethod.OTHER -> R.string.payment_method_other
+}
+
+@StringRes
+fun ChargeCategory.labelRes(): Int = when (this) {
+    ChargeCategory.SEAT_RENT -> R.string.charge_seat_rent
+    ChargeCategory.MEAL_CHARGE -> R.string.charge_meal
+    ChargeCategory.ELECTRICITY -> R.string.charge_electricity
+    ChargeCategory.WIFI -> R.string.charge_wifi
+    ChargeCategory.GAS -> R.string.charge_gas
+    ChargeCategory.WATER -> R.string.charge_water
+    ChargeCategory.FINE -> R.string.charge_fine
+    ChargeCategory.UTILITY -> R.string.charge_utility
+    ChargeCategory.SERVICE -> R.string.charge_service
+    ChargeCategory.OTHER -> R.string.charge_other
+}
+
+@StringRes
+fun AdjustmentKind.labelRes(): Int = when (this) {
+    AdjustmentKind.OPENING_DUE -> R.string.adjustment_opening_due
+    AdjustmentKind.CREDIT -> R.string.adjustment_credit
+    AdjustmentKind.DEBIT_ADJUSTMENT -> R.string.adjustment_debit
+}
+
+@StringRes
+fun FinanceValidationError.messageRes(): Int = when (this) {
+    FinanceValidationError.REQUIRED_SELECTION -> R.string.validation_required_selection
+    FinanceValidationError.AMOUNT -> R.string.validation_amount
+    FinanceValidationError.DATE -> R.string.validation_date
+    FinanceValidationError.DATE_RANGE -> R.string.validation_date_range
+    FinanceValidationError.DESCRIPTION -> R.string.validation_description
+    FinanceValidationError.REASON -> R.string.validation_reason
+    FinanceValidationError.REFERENCE -> R.string.validation_reference
+    FinanceValidationError.NOTE -> R.string.validation_note
+    FinanceValidationError.FUTURE_PAYMENT -> R.string.validation_future_payment
+}
+
+@StringRes
+fun AdminFinanceNotice.messageRes(): Int = when (this) {
+    AdminFinanceNotice.PERIOD_CREATED -> R.string.period_created
+    AdminFinanceNotice.PERIOD_CLOSED -> R.string.period_closed
+    AdminFinanceNotice.CHARGE_CREATED -> R.string.charge_created
+    AdminFinanceNotice.ADJUSTMENT_CREATED -> R.string.adjustment_created
+    AdminFinanceNotice.PAYMENT_RECORDED -> R.string.payment_recorded
+    AdminFinanceNotice.PAYMENT_REVERSED -> R.string.payment_reversed
+    AdminFinanceNotice.CARRY_FORWARD_COMPLETED -> R.string.carry_forward_completed
+}
+
+@StringRes
+fun MealSlot.labelRes(): Int = when (this) {
+    MealSlot.BREAKFAST -> R.string.meal_breakfast
+    MealSlot.LUNCH -> R.string.meal_lunch
+    MealSlot.DINNER -> R.string.meal_dinner
+}
+
+@StringRes
+fun RiceMovementKind.labelRes(): Int = when (this) {
+    RiceMovementKind.STOCK_IN -> R.string.rice_stock_in
+    RiceMovementKind.STOCK_OUT -> R.string.rice_stock_out
+}
+
+@StringRes
+fun ExpenseCategory.labelRes(): Int = when (this) {
+    ExpenseCategory.RICE -> R.string.expense_category_rice
+    ExpenseCategory.GROCERY -> R.string.expense_category_grocery
+    ExpenseCategory.UTILITY -> R.string.expense_category_utility
+    ExpenseCategory.MAINTENANCE -> R.string.expense_category_maintenance
+    ExpenseCategory.OTHER -> R.string.expense_category_other
+}
+
+@StringRes
+fun OperationsValidationError.messageRes(): Int = when (this) {
+    OperationsValidationError.REQUIRED_SELECTION -> R.string.validation_required_selection
+    OperationsValidationError.AMOUNT -> R.string.validation_amount
+    OperationsValidationError.MEAL_QUANTITY -> R.string.validation_meal_quantity
+    OperationsValidationError.RICE_QUANTITY -> R.string.validation_rice_quantity
+    OperationsValidationError.NOTE -> R.string.validation_operation_note
+    OperationsValidationError.DESCRIPTION -> R.string.validation_description
+    OperationsValidationError.REFERENCE -> R.string.validation_reference
+    OperationsValidationError.DATE -> R.string.validation_date
+    OperationsValidationError.FUTURE_DATE -> R.string.validation_future_date
+    OperationsValidationError.REVERSAL_REASON -> R.string.validation_reason
+}
+
+@StringRes
+fun OperationsNotice.messageRes(): Int = when (this) {
+    OperationsNotice.MEAL_RECORDED -> R.string.meal_recorded
+    OperationsNotice.MEAL_REVERSED -> R.string.meal_reversed
+    OperationsNotice.RICE_RECORDED -> R.string.rice_recorded
+    OperationsNotice.EXPENSE_RECORDED -> R.string.expense_recorded
+    OperationsNotice.EXPENSE_REVERSED -> R.string.expense_reversed
 }
 
 @Composable

@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -29,9 +33,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.smarttransparentmess.erp.R
+import com.smarttransparentmess.erp.domain.model.AppRole
 import com.smarttransparentmess.erp.domain.model.MemberProfile
+import com.smarttransparentmess.erp.presentation.AdminFinanceUiState
+import com.smarttransparentmess.erp.presentation.AdminFinanceViewModel
 import com.smarttransparentmess.erp.presentation.AppUiState
 import com.smarttransparentmess.erp.presentation.AuthViewModel
+import com.smarttransparentmess.erp.presentation.FinanceUiState
+import com.smarttransparentmess.erp.presentation.FinanceViewModel
+import com.smarttransparentmess.erp.presentation.ExtendedErpUiState
+import com.smarttransparentmess.erp.presentation.ExtendedErpViewModel
+import com.smarttransparentmess.erp.presentation.MemberManagementUiState
+import com.smarttransparentmess.erp.presentation.MemberManagementViewModel
+import com.smarttransparentmess.erp.presentation.OperationsUiState
+import com.smarttransparentmess.erp.presentation.OperationsViewModel
+import com.smarttransparentmess.erp.ui.admin.AdminFinanceScreen
 import com.smarttransparentmess.erp.ui.auth.AccessUnavailableScreen
 import com.smarttransparentmess.erp.ui.auth.AdminReauthScreen
 import com.smarttransparentmess.erp.ui.auth.LoginScreen
@@ -39,15 +55,28 @@ import com.smarttransparentmess.erp.ui.auth.PasswordResetScreen
 import com.smarttransparentmess.erp.ui.auth.PasswordUpdateScreen
 import com.smarttransparentmess.erp.ui.dashboard.DashboardScreen
 import com.smarttransparentmess.erp.ui.navigation.LocalRoute
+import com.smarttransparentmess.erp.ui.members.MemberManagementScreen
+import com.smarttransparentmess.erp.ui.erp.ExtendedErpScreen
+import com.smarttransparentmess.erp.ui.operations.OperationsScreen
 import com.smarttransparentmess.erp.ui.profile.AppInformationScreen
 import com.smarttransparentmess.erp.ui.profile.ProfileScreen
 
 @Composable
 fun SmartMessApp(
     viewModel: AuthViewModel,
+    financeViewModel: FinanceViewModel,
+    adminFinanceViewModel: AdminFinanceViewModel,
+    operationsViewModel: OperationsViewModel,
+    memberManagementViewModel: MemberManagementViewModel,
+    extendedErpViewModel: ExtendedErpViewModel,
     versionName: String,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val financeUiState by financeViewModel.uiState.collectAsState()
+    val adminFinanceUiState by adminFinanceViewModel.uiState.collectAsState()
+    val operationsUiState by operationsViewModel.uiState.collectAsState()
+    val memberManagementUiState by memberManagementViewModel.uiState.collectAsState()
+    val extendedErpUiState by extendedErpViewModel.uiState.collectAsState()
     val isBusy by viewModel.isBusy.collectAsState()
     val notice by viewModel.notice.collectAsState()
     val recoveryPending by viewModel.recoveryPending.collectAsState()
@@ -69,6 +98,31 @@ fun SmartMessApp(
                 uiState is AppUiState.SignedOut && notice != null -> {
                     adminCredentialsSubmitted = false
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is AppUiState.Authorized -> {
+                financeViewModel.loadForUser(state.profile.userId)
+                val canManage = state.profile.role == AppRole.ADMIN || state.profile.role == AppRole.MAIN_ADMIN
+                operationsViewModel.loadForUser(state.profile.userId, canManage)
+                extendedErpViewModel.loadForUser(state.profile.userId)
+                if (canManage) {
+                    adminFinanceViewModel.loadForUser(state.profile.userId)
+                    memberManagementViewModel.loadForUser(state.profile.userId, canManage = true)
+                } else {
+                    adminFinanceViewModel.clear()
+                    memberManagementViewModel.clear()
+                }
+            }
+            else -> {
+                financeViewModel.clear()
+                adminFinanceViewModel.clear()
+                operationsViewModel.clear()
+                memberManagementViewModel.clear()
+                extendedErpViewModel.clear()
             }
         }
     }
@@ -139,10 +193,20 @@ fun SmartMessApp(
             } else {
                 AuthorizedShell(
                     profile = state.profile,
+                    financeState = financeUiState,
+                    adminFinanceState = adminFinanceUiState,
+                    adminFinanceViewModel = adminFinanceViewModel,
+                    operationsState = operationsUiState,
+                    operationsViewModel = operationsViewModel,
+                    memberManagementState = memberManagementUiState,
+                    memberManagementViewModel = memberManagementViewModel,
+                    extendedErpState = extendedErpUiState,
+                    extendedErpViewModel = extendedErpViewModel,
                     selectedTab = selectedTab,
                     isBusy = isBusy,
                     notice = notice,
                     onTabSelected = { selectedTab = it },
+                    onRetryFinance = financeViewModel::refresh,
                     onSaveProfile = viewModel::saveProfile,
                     onOpenAppInformation = { route = LocalRoute.APP_INFORMATION },
                     onSignOut = viewModel::signOut,
@@ -188,15 +252,33 @@ private fun ConfigurationScreen() {
 @Composable
 private fun AuthorizedShell(
     profile: MemberProfile,
+    financeState: FinanceUiState,
+    adminFinanceState: AdminFinanceUiState,
+    adminFinanceViewModel: AdminFinanceViewModel,
+    operationsState: OperationsUiState,
+    operationsViewModel: OperationsViewModel,
+    memberManagementState: MemberManagementUiState,
+    memberManagementViewModel: MemberManagementViewModel,
+    extendedErpState: ExtendedErpUiState,
+    extendedErpViewModel: ExtendedErpViewModel,
     selectedTab: Int,
     isBusy: Boolean,
     notice: com.smarttransparentmess.erp.presentation.AuthNotice?,
     onTabSelected: (Int) -> Unit,
+    onRetryFinance: () -> Unit,
     onSaveProfile: (String, String) -> Unit,
     onOpenAppInformation: () -> Unit,
     onSignOut: () -> Unit,
     onClearNotice: () -> Unit,
 ) {
+    val canManageFinance = profile.role == AppRole.ADMIN || profile.role == AppRole.MAIN_ADMIN
+    val membersTab = 2
+    val operationsTab = if (canManageFinance) 3 else 1
+    val moreTab = if (canManageFinance) 4 else 2
+    val profileTab = if (canManageFinance) 5 else 3
+    LaunchedEffect(canManageFinance) {
+        if (selectedTab > profileTab) onTabSelected(0)
+    }
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -206,26 +288,106 @@ private fun AuthorizedShell(
                     icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.home)) },
                     label = { Text(stringResource(R.string.home)) },
                 )
+                if (canManageFinance) {
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { onTabSelected(1) },
+                        icon = {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = stringResource(R.string.admin_finance),
+                            )
+                        },
+                        label = { Text(stringResource(R.string.admin_finance)) },
+                    )
+                }
+                if (canManageFinance) {
+                    NavigationBarItem(
+                        selected = selectedTab == membersTab,
+                        onClick = { onTabSelected(membersTab) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Group,
+                                contentDescription = stringResource(R.string.members_title),
+                            )
+                        },
+                        label = { Text(stringResource(R.string.members_tab_members)) },
+                    )
+                }
                 NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { onTabSelected(1) },
+                    selected = selectedTab == operationsTab,
+                    onClick = { onTabSelected(operationsTab) },
+                    icon = {
+                        Icon(
+                            Icons.Default.Restaurant,
+                            contentDescription = stringResource(R.string.operations_title),
+                        )
+                    },
+                    label = { Text(stringResource(R.string.operations_short)) },
+                )
+                NavigationBarItem(
+                    selected = selectedTab == moreTab,
+                    onClick = { onTabSelected(moreTab) },
+                    icon = {
+                        Icon(
+                            Icons.Default.MoreHoriz,
+                            contentDescription = stringResource(R.string.extended_title),
+                        )
+                    },
+                    label = { Text(stringResource(R.string.more_tab)) },
+                )
+                NavigationBarItem(
+                    selected = selectedTab == profileTab,
+                    onClick = { onTabSelected(profileTab) },
                     icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile)) },
                     label = { Text(stringResource(R.string.profile)) },
                 )
             }
         },
     ) { contentPadding: PaddingValues ->
-        if (selectedTab == 0) {
-            DashboardScreen(
+        when {
+            selectedTab == 0 -> DashboardScreen(
                 profile = profile,
+                financeState = financeState,
                 modifier = Modifier.padding(contentPadding),
                 notice = notice,
-                onOpenProfile = { onTabSelected(1) },
+                onOpenProfile = { onTabSelected(profileTab) },
+                onRetryFinance = onRetryFinance,
                 onSignOut = onSignOut,
                 onClearNotice = onClearNotice,
             )
-        } else {
-            ProfileScreen(
+            selectedTab == 1 && canManageFinance -> AdminFinanceScreen(
+                state = adminFinanceState,
+                viewModel = adminFinanceViewModel,
+                modifier = Modifier.padding(contentPadding),
+            )
+            selectedTab == membersTab && canManageFinance -> MemberManagementScreen(
+                state = memberManagementState,
+                financeState = adminFinanceState,
+                operationsState = operationsState,
+                viewModel = memberManagementViewModel,
+                currentUserId = profile.userId,
+                currentRole = profile.role,
+                onRefreshAuxiliary = {
+                    adminFinanceViewModel.refresh()
+                    operationsViewModel.refresh()
+                },
+                modifier = Modifier.padding(contentPadding),
+            )
+            selectedTab == moreTab -> ExtendedErpScreen(
+                state = extendedErpState,
+                viewModel = extendedErpViewModel,
+                isAdmin = canManageFinance,
+                currentUserId = profile.userId,
+                modifier = Modifier.padding(contentPadding),
+            )
+            selectedTab == operationsTab -> OperationsScreen(
+                state = operationsState,
+                viewModel = operationsViewModel,
+                canManage = canManageFinance,
+                modifier = Modifier.padding(contentPadding),
+            )
+            else -> ProfileScreen(
                 profile = profile,
                 modifier = Modifier.padding(contentPadding),
                 isBusy = isBusy,

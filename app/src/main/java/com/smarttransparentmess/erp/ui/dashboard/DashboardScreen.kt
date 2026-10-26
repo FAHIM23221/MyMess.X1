@@ -24,6 +24,7 @@ import com.smarttransparentmess.erp.R
 import com.smarttransparentmess.erp.domain.model.AppRole
 import com.smarttransparentmess.erp.domain.model.MemberProfile
 import com.smarttransparentmess.erp.presentation.AuthNotice
+import com.smarttransparentmess.erp.presentation.FinanceUiState
 import com.smarttransparentmess.erp.ui.BrandMark
 import com.smarttransparentmess.erp.ui.InfoCard
 import com.smarttransparentmess.erp.ui.StatusPill
@@ -33,9 +34,11 @@ import com.smarttransparentmess.erp.ui.textOrNull
 @Composable
 fun DashboardScreen(
     profile: MemberProfile,
+    financeState: FinanceUiState,
     modifier: Modifier = Modifier,
     notice: AuthNotice? = null,
     onOpenProfile: () -> Unit,
+    onRetryFinance: () -> Unit,
     onSignOut: () -> Unit,
     onClearNotice: () -> Unit,
 ) {
@@ -43,11 +46,6 @@ fun DashboardScreen(
         AppRole.MEMBER -> R.string.member_dashboard_title
         AppRole.ADMIN -> R.string.admin_dashboard_title
         AppRole.MAIN_ADMIN -> R.string.main_admin_dashboard_title
-    }
-    val bodyRes = when (profile.role) {
-        AppRole.MEMBER -> R.string.phase_one_member_body
-        AppRole.ADMIN -> R.string.phase_one_admin_body
-        AppRole.MAIN_ADMIN -> R.string.phase_one_main_admin_body
     }
     val noticeIsInformational =
         notice == AuthNotice.PROFILE_SAVED ||
@@ -93,7 +91,12 @@ fun DashboardScreen(
 
         InfoCard(
             title = stringResource(titleRes),
-            body = stringResource(bodyRes),
+            body = stringResource(R.string.phase_two_dashboard_body),
+        )
+
+        FinanceSection(
+            state = financeState,
+            onRetry = onRetryFinance,
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

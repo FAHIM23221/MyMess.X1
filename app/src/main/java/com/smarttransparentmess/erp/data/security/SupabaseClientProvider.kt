@@ -6,6 +6,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.logging.LogLevel
 import io.github.jan.supabase.postgrest.Postgrest
 
@@ -35,6 +36,10 @@ object SupabaseClientProvider {
                 autoSaveToStorage = true
             }
             install(Postgrest)
+            install(Functions) {
+                // Never fall back to the publishable key for an authenticated mutation.
+                requireValidSession = true
+            }
         }
     }
 }

@@ -5,7 +5,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smarttransparentmess.erp.presentation.AdminFinanceViewModel
 import com.smarttransparentmess.erp.presentation.AuthViewModel
+import com.smarttransparentmess.erp.presentation.FinanceViewModel
+import com.smarttransparentmess.erp.presentation.ExtendedErpViewModel
+import com.smarttransparentmess.erp.presentation.OperationsViewModel
+import com.smarttransparentmess.erp.presentation.MemberManagementViewModel
 import com.smarttransparentmess.erp.ui.SmartMessApp
 import com.smarttransparentmess.erp.ui.theme.SmartMessTheme
 
@@ -26,9 +31,39 @@ class MainActivity : ComponentActivity() {
                     onPasswordRecoveryComplete = appContainer::markPasswordRecoveryComplete,
                 ),
             )
+            val financeViewModel: FinanceViewModel = viewModel(
+                factory = FinanceViewModel.Factory(
+                    repository = appContainer.financeRepository,
+                ),
+            )
+            val adminFinanceViewModel: AdminFinanceViewModel = viewModel(
+                factory = AdminFinanceViewModel.Factory(
+                    repository = appContainer.adminFinanceRepository,
+                ),
+            )
+            val operationsViewModel: OperationsViewModel = viewModel(
+                factory = OperationsViewModel.Factory(
+                    repository = appContainer.operationsRepository,
+                ),
+            )
+            val memberManagementViewModel: MemberManagementViewModel = viewModel(
+                factory = MemberManagementViewModel.Factory(
+                    repository = appContainer.memberManagementRepository,
+                ),
+            )
+            val extendedErpViewModel: ExtendedErpViewModel = viewModel(
+                factory = ExtendedErpViewModel.Factory(
+                    repository = appContainer.extendedErpRepository,
+                ),
+            )
             SmartMessTheme {
                 SmartMessApp(
                     viewModel = authViewModel,
+                    financeViewModel = financeViewModel,
+                    adminFinanceViewModel = adminFinanceViewModel,
+                    operationsViewModel = operationsViewModel,
+                    memberManagementViewModel = memberManagementViewModel,
+                    extendedErpViewModel = extendedErpViewModel,
                     versionName = BuildConfig.VERSION_NAME,
                 )
             }

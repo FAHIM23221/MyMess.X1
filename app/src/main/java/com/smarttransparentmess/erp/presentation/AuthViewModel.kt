@@ -124,7 +124,7 @@ class AuthViewModel(
                     try {
                         val userId = auth.currentUserId()
                             ?: throw IllegalStateException("Authenticated session has no user id")
-                        val profile = profiles.loadMyProfile()
+                        val profile = profiles.loadMyProfileOrAcceptInvitation()
                         if (profile.userId != userId) {
                             throw IllegalStateException("Profile identity did not match the session")
                         }
@@ -343,7 +343,7 @@ class AuthViewModel(
         profiles: MemberProfileRepository,
     ) {
         try {
-            val profile = profiles.loadMyProfile()
+            val profile = profiles.loadMyProfileOrAcceptInvitation()
             if (profile.userId != expectedUserId) {
                 _uiState.value = AppUiState.ProfileUnavailable(ProfileUnavailableReason.PROFILE_LOAD_FAILED)
                 return

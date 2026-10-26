@@ -1,5 +1,5 @@
-# Copy to local.properties for local builds. Do not commit local.properties.
-# Obtain these values from your Supabase project. The publishable key is public
-# client configuration; never put a service_role key here.
+# Optional: copy to local.properties to override the bundled public project config.
+# Blank values fall back to config/supabase.public.properties. Do not commit local.properties.
+# Use a publishable/anon client key only; never put a service_role or sb_secret key here.
 SUPABASE_URL=
 SUPABASE_PUBLISHABLE_KEY=
